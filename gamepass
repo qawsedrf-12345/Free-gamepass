@@ -1,1823 +1,1470 @@
--- CLAUDE HAHAHHAHAHAHA YES CLAUDE TY CLAUDE OMG CLAUDE
+--=============================================================
+--  CAPRI PROTOCOL  ·  AUTO RESPAWN v8.0  + CHAR (KinxCaesar R6)
+--  Delta / Executor · Tema: construto digital / Soulkiller
+--
+--  · Morte  -> FLATLINE: sinal perdido, voxels, glitch, ECG
+--  · Respawn-> renasce NO MESMO LUGAR (posição + rotação)
+--  · Morph  -> KinxCaesar aplicado automaticamente (SÓ R6)
+--  · Re-executar substitui a instância anterior
+--=============================================================
 
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local TextService = game:GetService("TextService")
-local HttpService = game:GetService("HttpService")
-local MarketplaceService = game:GetService("MarketplaceService")
-local TeleportService = game:GetService("TeleportService")
+if not game:IsLoaded() then game.Loaded:Wait() end
 
-local LocalPlayer = Players.LocalPlayer
+local cloneref = cloneref or function(o) return o end
+local genv = (getgenv and getgenv()) or _G
 
-local toggleKey = Enum.KeyCode.RightShift
-local supportedUrl = "https://loadstring.net/raw/TCiFuJc4kK"
-local title = "PRODUCT FAKER V2 : @vaehz on yt"
+for _, chave in ipairs({ "__CapriProtocol_Cleanup", "__RespawnV73_Cleanup" }) do
+    if genv[chave] then pcall(genv[chave]); genv[chave] = nil end
+end
 
-local asciiCfg = {
-	enabled = true,
-	textSize = 13,
-	padding = 80,
-	fps = 30,
-	ramp = " .,:;-=+*x#%@",
-	color = Color3.fromRGB(255, 255, 255),
-	mouse = true,
+local function svc(nome) return cloneref(game:GetService(nome)) end
+
+local Players          = svc("Players")
+local RunService       = svc("RunService")
+local SoundService     = svc("SoundService")
+local TweenService     = svc("TweenService")
+local Lighting         = svc("Lighting")
+local UserInputService = svc("UserInputService")
+
+local player = Players.LocalPlayer
+while not player do task.wait(); player = Players.LocalPlayer end
+
+--=============================================================
+-- CONFIGURAÇÃO
+--=============================================================
+local CONFIG = {
+    Qualidade = "auto",
+    OffsetY   = 3,
+    DEBUG     = false,
+
+    Audio = {
+        Ativo        = true,
+        VolumeMestre = 1,
+        CustomMorte   = "",
+        CustomRespawn = "",
+    },
+
+    Freeze = { Ativo = true, Duracao = 0.7, Camera = true, Movimento = true, Pulo = true },
+
+    Hud = { Ativo = true, Textos = true },
+
+    Morte = {
+        Flash = true, Escurecer = true, Letterbox = true, ColorGrade = true,
+        Bloom = true, Blur = true, Vinheta = true, Aberracao = true,
+        Scanlines = true, Glitch = true, Shake = true, Zoom = true,
+        ECG = true, Particulas = true,
+        Voxels = 70,
+    },
+
+    Respawn = {
+        GradeDecrypt = true, Flash = true, EstrelaFlare = true,
+        Aberracao = true, Scanlines = true, Shake = true, PunchFOV = true,
+        ColorGrade = true, Bloom = true, Blur = true, Particulas = true,
+        Feixe = true, DiscosChao = true, Luz = true, Highlight = true, PiscarCorpo = true,
+        Ondas  = 3,
+        Voxels = 60,
+    },
+
+    -- 🎭 MORPH — KinxCaesar, SÓ R6
+    Morph = { Ativo = true, Username = "KinxCaesar" },
 }
 
-local env = typeof(getgenv) == "function" and getgenv() or _G
-local previous = env.__ProductFaker or env.__ProductFakerUI
-if previous then
-	pcall(previous.Destroy, true)
-end
-
-local col = {
-	bg = Color3.fromRGB(13, 13, 13),
-	panel = Color3.fromRGB(30, 30, 30),
-	panelHi = Color3.fromRGB(38, 38, 38),
-	button = Color3.fromRGB(56, 56, 56),
-	buttonHi = Color3.fromRGB(72, 72, 72),
-	active = Color3.fromRGB(84, 84, 84),
-	icon = Color3.fromRGB(193, 193, 193),
-	dim = Color3.fromRGB(120, 120, 120),
-	white = Color3.fromRGB(255, 255, 255),
-	red = Color3.fromRGB(255, 57, 57),
-	blue = Color3.fromRGB(94, 115, 255),
-	yellow = Color3.fromRGB(238, 255, 131),
-	green = Color3.fromRGB(110, 255, 150),
+local PALETA = {
+    Ciano    = Color3.fromRGB(0, 240, 255),
+    Magenta  = Color3.fromRGB(255, 45, 170),
+    Amarelo  = Color3.fromRGB(252, 238, 10),
+    Vermelho = Color3.fromRGB(255, 20, 70),
+    Roxo     = Color3.fromRGB(150, 70, 255),
+    Verde    = Color3.fromRGB(60, 255, 150),
+    Escuro   = Color3.fromRGB(8, 5, 22),
+    Branco   = Color3.fromRGB(255, 255, 255),
 }
+local NEONS = { PALETA.Ciano, PALETA.Magenta, PALETA.Amarelo, PALETA.Roxo, PALETA.Branco }
 
-local roboto = "rbxasset://fonts/families/RobotoCondensed.json"
-local fontBold = Font.new(roboto, Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-local fontReg = Font.new(roboto, Enum.FontWeight.Regular, Enum.FontStyle.Normal)
-local fontItalic = Font.new(roboto, Enum.FontWeight.Regular, Enum.FontStyle.Italic)
-local fontInput = Font.new("rbxassetid://16658246179", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+--=============================================================
+-- HELPERS
+--=============================================================
+local encerrado = false
+local conexoes = {}
 
-local img = {
-	close = "rbxassetid://89309313651390",
-	home = "rbxassetid://70573525526341",
-	faker = "rbxassetid://117975333704340",
-	logger = "rbxassetid://109982256018444",
-	supported = "rbxassetid://133954136637154",
-	passes = "rbxassetid://84787327728949",
-	join = "rbxassetid://88984171145049",
-	copy = "rbxassetid://101160281432561",
-}
+local function rastrear(c) conexoes[#conexoes + 1] = c; return c end
+local function rf(a, b) return a + math.random() * (b - a) end
+local function pick(t) return t[math.random(#t)] end
 
-local function getEnum(enum, item)
-	local ok, v = pcall(function()
-		return Enum[enum][item]
-	end)
-	return ok and v or nil
-end
-
-local strokeInner = getEnum("BorderStrokePosition", "Inner")
-
-local function create(class, props, children)
-	local ok, inst = pcall(Instance.new, class)
-	if not ok then
-		return nil
-	end
-	local parent
-	for k, v in pairs(props or {}) do
-		if k == "Parent" then
-			parent = v
-		else
-			pcall(function()
-				inst[k] = v
-			end)
-		end
-	end
-	for _, child in pairs(children or {}) do
-		child.Parent = inst
-	end
-	if parent then
-		inst.Parent = parent
-	end
-	return inst
-end
-
-local function corner(r)
-	return create("UICorner", {CornerRadius = UDim.new(0, r or 8)})
-end
-
-local function stroke(t)
-	return create("UIStroke", {Color = col.white, Transparency = t or 0.86, BorderStrokePosition = strokeInner})
-end
-
-local function tween(obj, t, props, style, dir)
-	local tw = TweenService:Create(obj, TweenInfo.new(t, style or Enum.EasingStyle.Quint, dir or Enum.EasingDirection.Out), props)
-	tw:Play()
-	return tw
-end
-
-local function label(props)
-	props.BackgroundTransparency = 1
-	props.BorderSizePixel = 0
-	props.TextScaled = props.TextScaled ~= false
-	props.TextWrapped = true
-	props.AnchorPoint = props.AnchorPoint or Vector2.new(0.5, 0.5)
-	props.FontFace = props.FontFace or fontReg
-	props.TextColor3 = props.TextColor3 or col.white
-	return create("TextLabel", props)
-end
-
-local function isClick(input)
-	local t = input.UserInputType
-	return t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch
-end
-
-local function commas(n)
-	local s = tostring(math.floor(tonumber(n) or 0))
-	return (s:reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", ""))
-end
-
-local function copy(text)
-	local fn = setclipboard or toclipboard or set_clipboard or (Clipboard and Clipboard.set)
-	return fn ~= nil and (pcall(fn, tostring(text)))
-end
-
-local connections = {}
-local function bind(signal, fn)
-	local c = signal:Connect(fn)
-	table.insert(connections, c)
-	return c
-end
-
-local function mount(gui)
-	local parents = {}
-	if typeof(gethui) == "function" then
-		table.insert(parents, gethui)
-	end
-	table.insert(parents, function()
-		return game:GetService("CoreGui")
-	end)
-	table.insert(parents, function()
-		return LocalPlayer:WaitForChild("PlayerGui")
-	end)
-	for _, get in ipairs(parents) do
-		if pcall(function() gui.Parent = get() end) and gui.Parent then
-			return
-		end
-	end
-end
-
-local fadeProps = {
-	{"GuiObject", "BackgroundTransparency"},
-	{"TextLabel", "TextTransparency"},
-	{"TextButton", "TextTransparency"},
-	{"TextBox", "TextTransparency"},
-	{"ImageLabel", "ImageTransparency"},
-	{"ImageButton", "ImageTransparency"},
-	{"ScrollingFrame", "ScrollBarImageTransparency"},
-	{"UIStroke", "Transparency"},
-	{"UIShadow", "Transparency"},
-}
-
--- don't make these weak, instance wrappers get collected and the originals get lost
-local originals = {}
-local fadeExclude = {}
-
-local function getOriginal(inst)
-	local o = originals[inst]
-	if o then
-		return o
-	end
-	o = {}
-	for _, pair in ipairs(fadeProps) do
-		local okIs, is = pcall(inst.IsA, inst, pair[1])
-		if okIs and is then
-			local ok, v = pcall(function()
-				return inst[pair[2]]
-			end)
-			if ok and type(v) == "number" then
-				o[pair[2]] = v
-			end
-		end
-	end
-	originals[inst] = o
-	inst.Destroying:Connect(function()
-		originals[inst] = nil
-	end)
-	return o
-end
-
-local function isExcluded(inst)
-	for _, root in ipairs(fadeExclude) do
-		if inst == root or inst:IsDescendantOf(root) then
-			return true
-		end
-	end
-	return false
-end
-
-local function fade(root, alpha, t)
-	local list = root:GetDescendants()
-	table.insert(list, root)
-	for _, inst in ipairs(list) do
-		if not isExcluded(inst) then
-			local goal
-			for prop, v in pairs(getOriginal(inst)) do
-				goal = goal or {}
-				goal[prop] = v + (1 - v) * (1 - alpha)
-			end
-			if goal then
-				if t and t > 0 then
-					tween(inst, t, goal, Enum.EasingStyle.Quad)
-				else
-					for p, v in pairs(goal) do
-						pcall(function()
-							inst[p] = v
-						end)
-					end
-				end
-			end
-		end
-	end
-end
-
-local glyphs = "!<>-_\\/[]{}=+*^?#@$%&"
-local scrambleIds = {}
-
-local function scramble(lbl, text, duration)
-	local id = (scrambleIds[lbl] or 0) + 1
-	scrambleIds[lbl] = id
-	task.spawn(function()
-		local start, len = os.clock(), #text
-		while lbl.Parent and scrambleIds[lbl] == id do
-			local p = (os.clock() - start) / duration
-			if p >= 1 then
-				break
-			end
-			local revealed = math.floor(p * len)
-			local out = table.create(len)
-			for i = 1, len do
-				local ch = text:sub(i, i)
-				if i <= revealed or ch == " " then
-					out[i] = ch
-				else
-					local r = math.random(1, #glyphs)
-					out[i] = glyphs:sub(r, r)
-				end
-			end
-			lbl.Text = table.concat(out)
-			task.wait(0.03)
-		end
-		if scrambleIds[lbl] == id then
-			lbl.Text = text
-		end
-	end)
-end
-
-local ScreenGui = create("ScreenGui", {
-	Name = "ProductFakerV2",
-	ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-	ResetOnSpawn = false,
-	IgnoreGuiInset = true,
-	DisplayOrder = 999,
-})
-mount(ScreenGui)
-
-local AsciiHolder = create("Frame", {
-	Name = "AsciiBackdrop",
-	AnchorPoint = Vector2.new(0.5, 0.5),
-	Position = UDim2.fromScale(0.5, 0.5),
-	BackgroundTransparency = 1,
-	ClipsDescendants = true,
-	Visible = false,
-	ZIndex = 1,
-	Parent = ScreenGui,
-})
-
-local MainScale = create("UIScale", {Scale = 1})
-
-local Main = create("Frame", {
-	Name = "Main",
-	AnchorPoint = Vector2.new(0.5, 0.5),
-	Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromScale(0.285, 0.439),
-	BackgroundColor3 = col.bg,
-	BorderSizePixel = 0,
-	Visible = false,
-	ZIndex = 2,
-	Parent = ScreenGui,
-}, {
-	corner(),
-	create("UIShadow", {Transparency = 0.5, BlurRadius = UDim.new(0, 20)}),
-	create("UIStroke", {Color = col.white, Transparency = 0.74}),
-	create("UIAspectRatioConstraint", {AspectRatio = 1.2415}),
-	create("UISizeConstraint", {MinSize = Vector2.new(380, 306)}),
-	MainScale,
-})
-
-local idle = {BackgroundColor3 = col.button, ImageColor3 = col.icon}
-local hover = {BackgroundColor3 = col.buttonHi, ImageColor3 = col.white}
-
-local function buttonFx(btn, normal, hovered, isActive)
-	normal = normal or idle
-	hovered = hovered or hover
-	local scale = btn:FindFirstChildOfClass("UIScale") or create("UIScale", {Parent = btn})
-	local function active()
-		return isActive and isActive()
-	end
-
-	btn.MouseEnter:Connect(function()
-		if not active() then
-			tween(btn, 0.15, hovered)
-		end
-	end)
-	btn.MouseLeave:Connect(function()
-		tween(scale, 0.2, {Scale = 1})
-		if not active() then
-			tween(btn, 0.2, normal)
-		end
-	end)
-	btn.MouseButton1Down:Connect(function()
-		tween(scale, 0.08, {Scale = 0.9})
-	end)
-	btn.MouseButton1Up:Connect(function()
-		tween(scale, 0.35, {Scale = 1}, Enum.EasingStyle.Back)
-	end)
-end
-
-local TopBar = create("Frame", {
-	Name = "TopBar",
-	Size = UDim2.fromScale(1, 0.125),
-	BackgroundColor3 = col.panel,
-	BorderSizePixel = 0,
-	Parent = Main,
-}, {
-	create("UICorner", {BottomLeftRadius = UDim.new(0, 0), BottomRightRadius = UDim.new(0, 0)}),
-})
-
-local Title = label({
-	Name = "Title",
-	AnchorPoint = Vector2.new(0, 0.5),
-	Position = UDim2.fromScale(0.034, 0.5),
-	Size = UDim2.fromScale(0.8, 0.386),
-	Text = title,
-	FontFace = fontBold,
-	TextXAlignment = Enum.TextXAlignment.Left,
-	Parent = TopBar,
-})
-
-local CloseButton = create("ImageButton", {
-	Name = "CloseButton",
-	AnchorPoint = Vector2.new(0.5, 0.5),
-	Position = UDim2.fromScale(0.948, 0.5),
-	Size = UDim2.fromScale(0.069, 0.693),
-	BackgroundColor3 = col.button,
-	BorderSizePixel = 0,
-	Image = img.close,
-	ImageColor3 = col.icon,
-	AutoButtonColor = false,
-	Parent = TopBar,
-}, {corner(), stroke(), create("UIScale")})
-buttonFx(CloseButton, idle, {BackgroundColor3 = Color3.fromRGB(150, 40, 40), ImageColor3 = col.white})
-
-local BottomBar = create("Frame", {
-	Name = "BottomBar",
-	AnchorPoint = Vector2.new(0, 1),
-	Position = UDim2.fromScale(0, 1),
-	Size = UDim2.fromScale(1, 0.125),
-	BackgroundColor3 = col.panel,
-	BorderSizePixel = 0,
-	Parent = Main,
-}, {
-	create("UICorner", {TopLeftRadius = UDim.new(0, 0), TopRightRadius = UDim.new(0, 0)}),
-})
-
-local ButtonContainer = create("Frame", {
-	Name = "ButtonContainer",
-	AnchorPoint = Vector2.new(0.5, 0.5),
-	Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromScale(0.9588, 0.636),
-	BackgroundTransparency = 1,
-	Parent = BottomBar,
-}, {
-	create("UIListLayout", {
-		FillDirection = Enum.FillDirection.Horizontal,
-		HorizontalAlignment = Enum.HorizontalAlignment.Center,
-		VerticalAlignment = Enum.VerticalAlignment.Center,
-		Padding = UDim.new(0, 4),
-		SortOrder = Enum.SortOrder.LayoutOrder,
-	}),
-})
-
-local Indicator = create("Frame", {
-	Name = "TabIndicator",
-	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0, 0, 1, -2),
-	Size = UDim2.fromOffset(14, 2),
-	BackgroundColor3 = col.white,
-	BorderSizePixel = 0,
-	ZIndex = 3,
-	Parent = BottomBar,
-}, {corner(1)})
-
-local function navButton(name, image, order)
-	return create("ImageButton", {
-		Name = name,
-		LayoutOrder = order,
-		Size = UDim2.fromScale(0.0668, 1),
-		BackgroundColor3 = col.button,
-		BorderSizePixel = 0,
-		Image = image,
-		ImageColor3 = col.icon,
-		AutoButtonColor = false,
-		Parent = ButtonContainer,
-	}, {corner(), stroke(), create("UIScale")})
-end
-
-local HomeButton = navButton("HomeButton", img.home, 1)
-local FakerButton = navButton("FakerButton", img.faker, 2)
-local LoggerButton = navButton("LoggerButton", img.logger, 3)
-local SupportedButton = navButton("SupportedButton", img.supported, 4)
-local PassListButton = navButton("PassListButton", img.passes, 5)
-
-local SectionsContainer = create("Frame", {
-	Name = "SectionsContainer",
-	AnchorPoint = Vector2.new(0.5, 0.5),
-	Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromScale(0.938, 0.665),
-	BackgroundTransparency = 1,
-	ClipsDescendants = true,
-	Parent = Main,
-})
-
-local emptyLabels = {}
-
-local function makeScreen(name, scrolling)
-	if not scrolling then
-		return create("Frame", {
-			Name = name,
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			Visible = false,
-			Parent = SectionsContainer,
-		})
-	end
-
-	local sf = create("ScrollingFrame", {
-		Name = name,
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Visible = false,
-		ScrollBarThickness = 3,
-		ScrollBarImageColor3 = col.button,
-		CanvasSize = UDim2.new(),
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollingDirection = Enum.ScrollingDirection.Y,
-		Parent = SectionsContainer,
-	}, {
-		create("UIListLayout", {Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder}),
-		create("UIPadding", {PaddingTop = UDim.new(0, 1), PaddingBottom = UDim.new(0, 1), PaddingLeft = UDim.new(0, 1)}),
-	})
-
-	local empty = label({
-		Name = "Empty",
-		AnchorPoint = Vector2.new(0, 0),
-		Size = UDim2.new(1, -8, 0, 40),
-		Text = "Nothing here yet.",
-		TextScaled = false,
-		TextSize = 14,
-		TextColor3 = col.dim,
-		LayoutOrder = -1e9,
-		Parent = sf,
-	})
-	emptyLabels[sf] = empty
-
-	local function refresh()
-		for _, child in ipairs(sf:GetChildren()) do
-			if child:GetAttribute("IsRow") then
-				empty.Visible = false
-				return
-			end
-		end
-		empty.Visible = true
-	end
-	sf.ChildAdded:Connect(refresh)
-	sf.ChildRemoved:Connect(refresh)
-
-	return sf
-end
-
-local HomeScreen = makeScreen("HomeScreen", false)
-local FakerScreen = makeScreen("FakerScreen", false)
-local ProductLogger = makeScreen("ProductLogger", true)
-local SupportedContainer = makeScreen("SupportedContainer", true)
-local GamepassList = makeScreen("GamepassList", true)
-
-local ToastStroke = create("UIStroke", {Color = col.white, Transparency = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border})
-local Toast = create("TextLabel", {
-	Name = "Toast",
-	AnchorPoint = Vector2.new(0.5, 1),
-	Position = UDim2.new(0.5, 0, 0.875, -6),
-	Size = UDim2.fromOffset(0, 26),
-	AutomaticSize = Enum.AutomaticSize.X,
-	BackgroundColor3 = col.panel,
-	BackgroundTransparency = 1,
-	BorderSizePixel = 0,
-	FontFace = fontReg,
-	TextSize = 14,
-	TextColor3 = col.white,
-	TextTransparency = 1,
-	Text = "",
-	ZIndex = 20,
-	Parent = Main,
-}, {
-	corner(13),
-	create("UIPadding", {PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12)}),
-	ToastStroke,
-})
-table.insert(fadeExclude, Toast)
-
-local toastId = 0
-local function toast(text, color)
-	toastId += 1
-	local id = toastId
-	Toast.TextColor3 = color or col.white
-	Toast.Position = UDim2.new(0.5, 0, 0.875, 4)
-	tween(Toast, 0.3, {BackgroundTransparency = 0, TextTransparency = 0, Position = UDim2.new(0.5, 0, 0.875, -6)})
-	tween(ToastStroke, 0.3, {Transparency = 0.8})
-	scramble(Toast, text, 0.25)
-	task.delay(1.8, function()
-		if id ~= toastId then
-			return
-		end
-		tween(Toast, 0.3, {BackgroundTransparency = 1, TextTransparency = 1})
-		tween(ToastStroke, 0.3, {Transparency = 1})
-	end)
-end
-
--- Home screen (layout supplied by user)
-local function homeText(name, text, color, y, height, italic)
-    return label({
-        Name = name,
-        Text = text,
-        FontFace = italic and fontItalic or fontReg,
-        TextColor3 = color,
-        Size = UDim2.fromScale(0.82439023, height),
-        Position = UDim2.fromScale(0.5, y),
-        Active = true,
-        Selectable = true,
-        Parent = HomeScreen,
-    })
-end
-
-homeText("subhead", "Fakes gamepass/product purchases.", col.white, 0.088, 0.10683761, true)
-local execamt = homeText("execamt", "— executions", col.white, 0.26748723, 0.10683761)
-homeText("poweredby", "Powered by https://loadstring.net/", col.white, 0.351, 0.05982906)
-
-local function homeLink(name, text, color, y, url)
-    local lbl = homeText(name, text, color, y, 0.10683761)
-    lbl.MouseEnter:Connect(function()
-        tween(lbl, 0.15, {TextColor3 = color:Lerp(col.white, 0.45)})
+local function seguro(fn, ...)
+    local args = table.pack(...)
+    task.spawn(function()
+        local ok, err = pcall(fn, table.unpack(args, 1, args.n))
+        if not ok and CONFIG.DEBUG then warn("[Capri]", err) end
     end)
-    lbl.MouseLeave:Connect(function()
-        tween(lbl, 0.2, {TextColor3 = color})
-    end)
-    lbl.InputBegan:Connect(function(input)
-        if not isClick(input) then return end
-        if copy(url) then
-            toast("Copied " .. url)
+end
+
+local function novo(classe, props, pai)
+    local o = Instance.new(classe)
+    for k, v in pairs(props) do o[k] = v end
+    if pai then o.Parent = pai end
+    return o
+end
+
+local function tw(obj, dur, props, estilo, dir)
+    local t = TweenService:Create(obj, TweenInfo.new(dur, estilo or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out), props)
+    t:Play()
+    return t
+end
+
+--=============================================================
+-- ESTADO
+--=============================================================
+local cframeSalvo, cframeSeguro = nil, nil
+local ultimoCFrameSalvo, tempoUltimoSalvamento = nil, 0
+local marcador = nil
+local salvandoAtivo = true
+local cicloAtual = 0
+local emMorte = false
+local conexoesCharacter = {}
+local morphDescCache = nil
+local avisoR15JaMostrado = false     -- ⬅️ vindo do Char.txt
+local fovOriginal = nil
+local hudConn = nil
+local freezeAtivo, freezeConexoes, freezeToken = false, {}, 0
+
+--=============================================================
+-- QUALIDADE / PASTA DE EFEITOS 3D
+--=============================================================
+local function calcularQ()
+    local q = CONFIG.Qualidade
+    if q == "alta" then return 1 end
+    if q == "media" then return 0.65 end
+    if q == "baixa" then return 0.35 end
+    local celular = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+    return celular and 0.6 or 1
+end
+local Q = calcularQ()
+local function N(x) return math.max(1, math.floor(x * Q + 0.5)) end
+
+local fxFolder = Instance.new("Folder")
+fxFolder.Name = "CapriFX"
+fxFolder.Parent = workspace
+
+--=============================================================
+-- DIRETOR DE CÂMERA
+--=============================================================
+local CAM_BIND = "CapriCamFX"
+local CamFX = { shakes = {}, fov = nil, congelar = nil, ligado = false }
+
+local function camPasso()
+    local c = workspace.CurrentCamera
+    if not c then return end
+    local t = os.clock()
+
+    if CamFX.congelar then
+        c.CFrame = CamFX.congelar
+        c.Focus = CFrame.new(CamFX.congelar.Position)
+    end
+
+    if CamFX.fov then
+        local f = CamFX.fov
+        local a = (t - f.ini) / f.dur
+        if a >= 1 then
+            c.FieldOfView = f.para
+            CamFX.fov = nil
         else
-            toast("Clipboard unavailable", col.red)
-        end
-    end)
-end
-
-homeLink("yt", "YouTube: @vaehz", col.red, 0.50252998, "https://youtube.com/@vaehz")
-homeLink("disc", "Discord: discord.gg/vaehz", col.blue, 0.60936755, "https://discord.gg/vaehz")
-homeLink("site", "Website: RobloxExploit.org", col.yellow, 0.71620518, "https://robloxexploit.org")
-homeText("noticewarningthing", "THIS WONT WORK ON MAJORITY OF GAMES, GET SOME KNOWLEDGE BEFORE COMPLAINING THAT THIS DOESNT WORK. SUPPORTED GAMES LIST CAN BE FOUND AT THE BOTTOM OF THIS UI.", col.white, 0.88461536, 0.22222222)
-
--- Public Worker endpoint. No loadstring.net API key belongs in this file.
-local executionsEndpoint = "https://withered-forest-4c04.vaehzthrowaway.workers.dev/executions"
-task.spawn(function()
-    local ok, result = pcall(function()
-        local body = game:HttpGet(executionsEndpoint)
-        return HttpService:JSONDecode(body)
-    end)
-    if destroyed then return end
-    if ok and type(result) == "table" then
-        local count = result.executions
-        if type(count) ~= "number" and type(result.apiResponse) == "table" then
-            count = result.apiResponse.total
-        end
-        if type(count) == "number" and count >= 0 then
-            execamt.Text = commas(count) .. " executions!"
+            c.FieldOfView = f.de + (f.para - f.de) * TweenService:GetValue(a, f.estilo, f.dir)
         end
     end
-end)
 
-local idInputPos = UDim2.fromScale(0.0122, 0)
+    local ox, oy, rot = 0, 0, 0
+    for i = #CamFX.shakes, 1, -1 do
+        local s = CamFX.shakes[i]
+        local p = (t - s.ini) / s.dur
+        if p >= 1 then
+            table.remove(CamFX.shakes, i)
+        else
+            local f = (1 - p) * (1 - p) * s.intens
+            ox = ox + (math.random() - 0.5) * 2 * f
+            oy = oy + (math.random() - 0.5) * 2 * f
+            if s.rot then rot = rot + (math.random() - 0.5) * math.rad(2.2) * f end
+        end
+    end
+    if ox ~= 0 or oy ~= 0 or rot ~= 0 then
+        c.CFrame = c.CFrame * CFrame.new(ox, oy, 0) * CFrame.Angles(0, 0, rot)
+    end
 
-local IdStroke = stroke()
-local IdInput = create("Frame", {
-	Name = "IdInput",
-	Position = idInputPos,
-	Size = UDim2.fromScale(0.5805, 0.1838),
-	BackgroundColor3 = col.panel,
-	BorderSizePixel = 0,
-	Parent = FakerScreen,
-}, {corner(), IdStroke})
-
-local InpBox = create("TextBox", {
-	Name = "InpBox",
-	AnchorPoint = Vector2.new(0.5, 0.5),
-	Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromScale(0.9076, 0.4651),
-	BackgroundTransparency = 1,
-	BorderSizePixel = 0,
-	FontFace = fontInput,
-	PlaceholderText = "Paste ID here",
-	PlaceholderColor3 = col.dim,
-	Text = "",
-	TextColor3 = col.white,
-	TextScaled = true,
-	TextWrapped = true,
-	TextXAlignment = Enum.TextXAlignment.Left,
-	ClearTextOnFocus = false,
-	Parent = IdInput,
-})
-
-InpBox.Focused:Connect(function()
-	tween(IdStroke, 0.2, {Transparency = 0.55})
-	tween(IdInput, 0.2, {BackgroundColor3 = col.panelHi})
-end)
-
-local FakeButton = create("ImageButton", {
-	Name = "FakePurchaseBtn",
-	Position = UDim2.fromScale(0.5976, 0),
-	Size = UDim2.fromScale(0.3878, 0.1838),
-	BackgroundColor3 = col.panel,
-	BorderSizePixel = 0,
-	AutoButtonColor = false,
-	ImageTransparency = 1,
-	Parent = FakerScreen,
-}, {corner(), stroke(), create("UIScale")})
-
-label({
-	Name = "Label",
-	Text = "Fake it!",
-	FontFace = fontBold,
-	Size = UDim2.fromScale(0.8176, 0.4651),
-	Position = UDim2.fromScale(0.5, 0.5),
-	Parent = FakeButton,
-})
-
-buttonFx(FakeButton, {BackgroundColor3 = col.panel}, {BackgroundColor3 = col.buttonHi})
-
-label({
-	Name = "Notice",
-	Text = "Please note that this will NOT work in majority of games. Please do your research before complaining that this script is broken. At the bottom you'll find a list of games this supports.",
-	Size = UDim2.fromScale(0.8244, 0.2222),
-	Position = UDim2.fromScale(0.4841, 0.8889),
-	Parent = FakerScreen,
-})
-
-local function shake(obj, base)
-	task.spawn(function()
-		for _, o in ipairs({7, -6, 4, -3, 2, 0}) do
-			tween(obj, 0.04, {Position = base + UDim2.fromOffset(o, 0)}, Enum.EasingStyle.Sine)
-			task.wait(0.04)
-		end
-		obj.Position = base
-	end)
+    if not CamFX.congelar and not CamFX.fov and #CamFX.shakes == 0 then
+        CamFX.ligado = false
+        pcall(function() RunService:UnbindFromRenderStep(CAM_BIND) end)
+    end
 end
 
-local function makeRow(list, data, actionImage, onAction)
-	local row = create("Frame", {
-		Name = "Row",
-		Size = UDim2.new(1, -8, 0, 66),
-		BackgroundColor3 = col.panel,
-		BorderSizePixel = 0,
-		LayoutOrder = data.order or 0,
-	}, {corner(), stroke()})
-	row:SetAttribute("IsRow", true)
-
-	create("ImageLabel", {
-		Name = "Icon",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(0, 35, 0.5, 0),
-		Size = UDim2.fromOffset(49, 49),
-		BackgroundColor3 = col.button,
-		BorderSizePixel = 0,
-		Image = data.icon or "",
-		ScaleType = Enum.ScaleType.Crop,
-		Parent = row,
-	}, {corner(), stroke()})
-
-	label({
-		Name = "Title",
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 71, 0, 24),
-		Size = UDim2.new(1, -120, 0, 17),
-		Text = data.title or "",
-		FontFace = fontBold,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Parent = row,
-	})
-
-	label({
-		Name = "Sub",
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 71, 0, 41),
-		Size = UDim2.new(1, -120, 0, 17),
-		Text = data.sub or "",
-		TextColor3 = col.icon,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		Parent = row,
-	})
-
-	local action = create("ImageButton", {
-		Name = "Action",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(1, -30, 0.5, 0),
-		Size = UDim2.fromOffset(32, 32),
-		BackgroundColor3 = col.button,
-		BorderSizePixel = 0,
-		Image = actionImage,
-		ImageColor3 = col.icon,
-		AutoButtonColor = false,
-		Parent = row,
-	}, {corner(), stroke(), create("UIScale")})
-	buttonFx(action)
-	action.MouseButton1Click:Connect(onAction)
-
-	if data.onClick then
-		row.InputBegan:Connect(function(input)
-			if isClick(input) then
-				data.onClick()
-			end
-		end)
-	end
-
-	row.MouseEnter:Connect(function()
-		tween(row, 0.15, {BackgroundColor3 = col.panelHi})
-	end)
-	row.MouseLeave:Connect(function()
-		tween(row, 0.2, {BackgroundColor3 = col.panel})
-	end)
-
-	row.Parent = list
-
-	if list.Visible and Main.Visible then
-		fade(row, 0, 0)
-		fade(row, 1, 0.3)
-	end
-
-	return row
+local function camLigar()
+    if CamFX.ligado then return end
+    CamFX.ligado = true
+    RunService:BindToRenderStep(CAM_BIND, Enum.RenderPriority.Camera.Value + 2, camPasso)
 end
 
-local function clearList(list)
-	for _, child in ipairs(list:GetChildren()) do
-		if child:GetAttribute("IsRow") then
-			child:Destroy()
-		end
-	end
+local function camShake(intens, dur, rot)
+    CamFX.shakes[#CamFX.shakes + 1] = { ini = os.clock(), dur = dur, intens = intens, rot = rot }
+    camLigar()
 end
 
-local function copyId(id)
-	if copy(id) then
-		toast("Copied " .. tostring(id), col.green)
-	else
-		toast("Clipboard unavailable", col.red)
-	end
+local function camFov(de, para, dur, estilo, dir)
+    CamFX.fov = { de = de, para = para, dur = dur, ini = os.clock(),
+                  estilo = estilo or Enum.EasingStyle.Quad, dir = dir or Enum.EasingDirection.Out }
+    camLigar()
 end
 
-local tabs = {
-	{name = "Home", button = HomeButton, screen = HomeScreen},
-	{name = "Faker", button = FakerButton, screen = FakerScreen},
-	{name = "Logger", button = LoggerButton, screen = ProductLogger},
-	{name = "Supported", button = SupportedButton, screen = SupportedContainer},
-	{name = "Passes", button = PassListButton, screen = GamepassList},
+local function camCongelar(cf)
+    CamFX.congelar = cf
+    if cf then camLigar() end
+end
+
+--=============================================================
+-- EFEITOS DE LIGHTING
+--=============================================================
+local efl = {}
+local efTokens = {}
+
+local function criarEfeitosLighting()
+    efl.cc    = novo("ColorCorrectionEffect", { Name = "CapriCC", Enabled = false }, Lighting)
+    efl.bloom = novo("BloomEffect", { Name = "CapriBloom", Enabled = false, Intensity = 0, Size = 28, Threshold = 0.9 }, Lighting)
+    efl.blur  = novo("BlurEffect", { Name = "CapriBlur", Enabled = false, Size = 0 }, Lighting)
+end
+criarEfeitosLighting()
+
+local function pulso(efeito, prop, pico, dur)
+    efeito.Enabled = true
+    efeito[prop] = pico
+    local meu = (efTokens[efeito] or 0) + 1
+    efTokens[efeito] = meu
+    tw(efeito, dur, { [prop] = 0 })
+    task.delay(dur + 0.05, function()
+        if efTokens[efeito] == meu and efeito.Parent then efeito.Enabled = false end
+    end)
+end
+
+local function gradeMorte()
+    efl.cc.Enabled = true
+    tw(efl.cc, 0.5, { Saturation = -0.85, Contrast = 0.3, Brightness = -0.06, TintColor = Color3.fromRGB(255, 195, 215) })
+end
+
+local function resetGrade(dur)
+    dur = dur or 0.5
+    tw(efl.cc, dur, { Saturation = 0, Contrast = 0, Brightness = 0, TintColor = Color3.new(1, 1, 1) })
+    task.delay(dur + 0.05, function()
+        if not emMorte and efl.cc.Parent then efl.cc.Enabled = false end
+    end)
+end
+
+local function gradeRespawn()
+    efl.cc.Enabled = true
+    efl.cc.Saturation, efl.cc.Contrast, efl.cc.Brightness = 0.9, 0.45, 0.12
+    efl.cc.TintColor = Color3.fromRGB(190, 255, 255)
+    resetGrade(1.1)
+end
+
+--=============================================================
+-- ÁUDIO
+--=============================================================
+local SONS = {
+    ping  = { "rbxasset://sounds/electronicpingshort.wav", "rbxasset://sounds/switch.wav" },
+    boom  = { "rbxasset://sounds/impact_explosion_03.mp3", "rbxasset://sounds/bass.wav" },
+    snap  = { "rbxasset://sounds/snap.mp3", "rbxasset://sounds/clickfast.wav" },
+    bass  = { "rbxasset://sounds/bass.wav", "rbxasset://sounds/impact_explosion_03.mp3" },
+    click = { "rbxasset://sounds/clickfast.wav", "rbxasset://sounds/snap.mp3", "rbxasset://sounds/switch.wav" },
 }
 
-local navActive = {BackgroundColor3 = col.active, ImageColor3 = col.white}
-local currentTab
-local scanProducts
-local loadSupported
+local audiosAtivos = {}
 
-local function moveIndicator(instant)
-	if not currentTab then
-		return
-	end
-	local btn = tabs[currentTab].button
-	local s = MainScale.Scale > 0 and MainScale.Scale or 1
-	local x = (btn.AbsolutePosition.X + btn.AbsoluteSize.X / 2 - BottomBar.AbsolutePosition.X) / s
-	local pos = UDim2.new(0, x, 1, -2)
-	if instant then
-		Indicator.Position = pos
-	else
-		tween(Indicator, 0.4, {Position = pos})
-	end
+local function tocarSom(ids, vol, vel, fxs)
+    if not CONFIG.Audio.Ativo or encerrado then return nil end
+    if type(ids) == "string" then ids = { ids } end
+    for _, id in ipairs(ids) do
+        if id ~= "" then
+            local s = Instance.new("Sound")
+            s.SoundId = id
+            s.Volume = (vol or 1) * CONFIG.Audio.VolumeMestre
+            s.PlaybackSpeed = vel or 1
+            for _, e in ipairs(fxs or {}) do
+                local ok, fx = pcall(Instance.new, e[1])
+                if ok and fx then
+                    for k, v in pairs(e[2]) do pcall(function() fx[k] = v end) end
+                    fx.Parent = s
+                end
+            end
+            s.Parent = SoundService
+            local t0 = os.clock()
+            while not s.IsLoaded and os.clock() - t0 < 0.4 do task.wait() end
+            if s.IsLoaded then
+                audiosAtivos[s] = true
+                s.Ended:Connect(function() audiosAtivos[s] = nil; s:Destroy() end)
+                task.delay(12, function() audiosAtivos[s] = nil; s:Destroy() end)
+                s:Play()
+                return s
+            end
+            s:Destroy()
+        end
+    end
+    return nil
 end
 
-local function setTab(index, instant)
-	if index == currentTab then
-		return
-	end
-	local prev = currentTab
-	local dir = (prev and index < prev) and -1 or 1
-	currentTab = index
-
-	for i, tab in ipairs(tabs) do
-		local goal = i == index and navActive or idle
-		if instant then
-			for k, v in pairs(goal) do
-				tab.button[k] = v
-			end
-		else
-			tween(tab.button, 0.2, goal)
-		end
-	end
-	moveIndicator(instant)
-
-	if prev then
-		local old = tabs[prev].screen
-		if instant then
-			old.Visible = false
-		else
-			fade(old, 0, 0.15)
-			tween(old, 0.25, {Position = UDim2.fromScale(-0.06 * dir, 0)})
-			task.delay(0.25, function()
-				if tabs[currentTab].screen ~= old then
-					old.Visible = false
-				end
-			end)
-		end
-	end
-
-	local screen = tabs[index].screen
-	screen.Visible = true
-	if instant then
-		screen.Position = UDim2.new()
-		fade(screen, 1, 0)
-	else
-		screen.Position = UDim2.fromScale(0.06 * dir, 0)
-		fade(screen, 0, 0)
-		tween(screen, 0.4, {Position = UDim2.new()})
-		fade(screen, 1, 0.3)
-	end
+local function audioMorte()
+    if not CONFIG.Audio.Ativo then return end
+    seguro(tocarSom, SONS.boom, 2.4, 0.5, {
+        { "DistortionSoundEffect", { Level = 0.55 } },
+        { "ReverbSoundEffect", { DecayTime = 3, Density = 1, Diffusion = 1, DryLevel = 0, WetLevel = -4 } },
+    })
+    for i = 1, 9 do
+        task.delay((i - 1) * 0.065, function()
+            seguro(tocarSom, SONS.ping, 0.8, 2.4 - (i - 1) * 0.25, {
+                { "EchoSoundEffect", { Delay = 0.14, Feedback = 0.45, DryLevel = 0, WetLevel = -5 } },
+            })
+        end)
+    end
+    for _ = 1, 7 do
+        task.delay(rf(0.05, 0.7), function()
+            seguro(tocarSom, SONS.click, rf(0.5, 1), rf(0.6, 3.2))
+        end)
+    end
+    seguro(tocarSom, SONS.bass, 1.6, 0.45, { { "TremoloSoundEffect", { Depth = 0.7, Frequency = 6, Duty = 0.5 } } })
+    if CONFIG.Audio.CustomMorte ~= "" then
+        seguro(tocarSom, CONFIG.Audio.CustomMorte, 1, rf(0.98, 1.02))
+    end
 end
 
-local function setTabByName(name)
-	for i, tab in ipairs(tabs) do
-		if tab.name == name then
-			setTab(i)
-			return
-		end
-	end
+local function audioRespawn()
+    if not CONFIG.Audio.Ativo then return end
+    local notas = { 0.7, 0.88, 1.05, 1.32, 1.65, 2.1 }
+    for i, v in ipairs(notas) do
+        task.delay((i - 1) * 0.06, function()
+            seguro(tocarSom, SONS.ping, 0.85, v, {
+                { "ChorusSoundEffect", { Depth = 0.6, Mix = 0.5, Rate = 1.2 } },
+                { "ReverbSoundEffect", { DecayTime = 1.6, WetLevel = -5 } },
+            })
+        end)
+    end
+    task.delay(0.30, function()
+        seguro(tocarSom, SONS.boom, 1.6, 0.85, {
+            { "DistortionSoundEffect", { Level = 0.35 } },
+            { "ReverbSoundEffect", { DecayTime = 2.2, WetLevel = -3 } },
+        })
+    end)
+    task.delay(0.36, function() seguro(tocarSom, SONS.snap, 1.2, 1.5) end)
+    seguro(tocarSom, SONS.bass, 1.3, 0.6, { { "TremoloSoundEffect", { Depth = 0.8, Frequency = 9, Duty = 0.5 } } })
+    if CONFIG.Audio.CustomRespawn ~= "" then
+        seguro(tocarSom, CONFIG.Audio.CustomRespawn, 1, rf(0.98, 1.02))
+    end
 end
 
-for i, tab in ipairs(tabs) do
-	buttonFx(tab.button, idle, hover, function()
-		return currentTab == i
-	end)
-	tab.button.MouseButton1Click:Connect(function()
-		if currentTab == i and tab.name == "Passes" and scanProducts then
-			scanProducts()
-		elseif currentTab == i and tab.name == "Supported" and loadSupported then
-			loadSupported()
-		else
-			setTab(i)
-		end
-	end)
+--=============================================================
+-- GUI
+--=============================================================
+local function pegarGuiParent()
+    if gethui then
+        local ok, r = pcall(gethui)
+        if ok and r then return r end
+    end
+    return player:WaitForChild("PlayerGui")
 end
 
-BottomBar:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-	moveIndicator(true)
-end)
-BottomBar:GetPropertyChangedSignal("AbsolutePosition"):Connect(function()
-	moveIndicator(true)
-end)
-
-do
-	local dragging, dragStart, startPos
-	TopBar.InputBegan:Connect(function(input)
-		if not isClick(input) then
-			return
-		end
-		dragging, dragStart, startPos = true, input.Position, Main.Position
-		local c
-		c = input.Changed:Connect(function()
-			if input.UserInputState == Enum.UserInputState.End then
-				dragging = false
-				c:Disconnect()
-			end
-		end)
-	end)
-
-	bind(UserInputService.InputChanged, function(input)
-		if not dragging then
-			return
-		end
-		local t = input.UserInputType
-		if t == Enum.UserInputType.MouseMovement or t == Enum.UserInputType.Touch then
-			local d = input.Position - dragStart
-			Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y)
-		end
-	end)
+local function frame(props, pai)
+    local p = { BorderSizePixel = 0, BackgroundColor3 = PALETA.Branco, BackgroundTransparency = 1 }
+    for k, v in pairs(props) do p[k] = v end
+    return novo("Frame", p, pai)
 end
 
-local ascii = {}
-do
-	local font = Enum.Font.Code
-	local huge = Vector2.new(1e5, 1e5)
-	local size = asciiCfg.textSize
-
-	local cw = TextService:GetTextSize(string.rep("M", 40), size, font, huge).X / 40
-	local h1 = TextService:GetTextSize("M", size, font, huge).Y
-	local h11 = TextService:GetTextSize(string.rep("M\n", 10) .. "M", size, font, huge).Y
-	local ch = (h11 - h1) / 10
-	if cw <= 0 then
-		cw = size * 0.6
-	end
-	if ch <= 0 then
-		ch = size
-	end
-
-	-- 3 stacked labels at different transparencies, cheaper than richtext per char
-	local layers = {
-		{min = 0.1, transparency = 0.84},
-		{min = 0.4, transparency = 0.62},
-		{min = 0.7, transparency = 0.3},
-	}
-
-	local labels = {}
-	for i in ipairs(layers) do
-		labels[i] = create("TextLabel", {
-			Name = "Layer" .. i,
-			BackgroundTransparency = 1,
-			Font = font,
-			TextSize = size,
-			TextColor3 = asciiCfg.color,
-			TextTransparency = 1,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			TextYAlignment = Enum.TextYAlignment.Top,
-			TextWrapped = false,
-			RichText = false,
-			Text = "",
-			ZIndex = 1,
-			Parent = AsciiHolder,
-		})
-	end
-
-	local ramp = {}
-	for i = 1, #asciiCfg.ramp do
-		ramp[i] = asciiCfg.ramp:sub(i, i)
-	end
-	local rampLen = #ramp
-
-	local cols, rows, offX, offY = 0, 0, 0, 0
-	local glow = {}
-	local bufs = {{}, {}, {}}
-	local lines = {{}, {}, {}}
-
-	function ascii.rebuild(area, inner)
-		cols = math.max(1, math.floor(area.X / cw))
-		rows = math.max(1, math.floor(area.Y / ch))
-		offX = (area.X - cols * cw) / 2
-		offY = (area.Y - rows * ch) / 2
-
-		for _, l in ipairs(labels) do
-			l.Position = UDim2.fromOffset(offX, offY)
-			l.Size = UDim2.fromOffset(cols * cw + 4, rows * ch + 4)
-		end
-
-		local cx, cy = area.X / 2, area.Y / 2
-		local hw, hh = inner.X / 2, inner.Y / 2
-		local pad = asciiCfg.padding
-		table.clear(glow)
-		for y = 0, rows - 1 do
-			local qy = math.max(math.abs(offY + (y + 0.5) * ch - cy) - hh, 0)
-			for x = 0, cols - 1 do
-				local qx = math.max(math.abs(offX + (x + 0.5) * cw - cx) - hw, 0)
-				local i = y * cols + x + 1
-				if qx == 0 and qy == 0 then
-					glow[i] = -1
-				else
-					local g = math.clamp(1 - math.sqrt(qx * qx + qy * qy) / pad, 0, 1)
-					glow[i] = g * g * (3 - 2 * g)
-				end
-			end
-		end
-		for _, b in ipairs(bufs) do
-			table.clear(b)
-		end
-	end
-
-	local noise, sin, cos, sqrt, exp, floor = math.noise, math.sin, math.cos, math.sqrt, math.exp, math.floor
-	local min1, min2, min3 = layers[1].min, layers[2].min, layers[3].min
-	local aspect = ch / cw
-
-	function ascii.render(t, alpha, mx, my)
-		local mcx, mcy
-		if mx then
-			mcx, mcy = (mx - offX) / cw, (my - offY) / ch
-		end
-		local b1, b2, b3 = bufs[1], bufs[2], bufs[3]
-		local l1, l2, l3 = lines[1], lines[2], lines[3]
-
-		for y = 0, rows - 1 do
-			local base = y * cols
-			local ny = y * 0.11 - t * 0.35
-			local wy = cos(y * 0.21 - t * 0.7)
-			for x = 0, cols - 1 do
-				local g = glow[base + x + 1]
-				local c1, c2, c3 = " ", " ", " "
-				if g > 0 then
-					local v = 0.45 + noise(x * 0.055, ny, t * 0.12) * 1.3 + sin(x * 0.12 + t * 1.1) * wy * 0.18
-					if mcx then
-						local dx, dy = x - mcx, (y - mcy) * aspect
-						local d = sqrt(dx * dx + dy * dy)
-						v += sin(d * 0.45 - t * 7) * exp(-d * 0.09) * 0.45
-					end
-					v *= g * alpha
-					if v >= min1 then
-						local idx = math.clamp(floor(v * rampLen) + 1, 2, rampLen)
-						local glyph = ramp[idx]
-						if v >= min3 then
-							c3 = glyph
-						elseif v >= min2 then
-							c2 = glyph
-						else
-							c1 = glyph
-						end
-					end
-				end
-				b1[x + 1], b2[x + 1], b3[x + 1] = c1, c2, c3
-			end
-			l1[y + 1] = table.concat(b1, "", 1, cols)
-			l2[y + 1] = table.concat(b2, "", 1, cols)
-			l3[y + 1] = table.concat(b3, "", 1, cols)
-		end
-
-		labels[1].Text = table.concat(l1, "\n", 1, rows)
-		labels[2].Text = table.concat(l2, "\n", 1, rows)
-		labels[3].Text = table.concat(l3, "\n", 1, rows)
-
-		for i, layer in ipairs(layers) do
-			labels[i].TextTransparency = 1 - (1 - layer.transparency) * alpha
-		end
-	end
+local function texto(props, pai)
+    local p = { BackgroundTransparency = 1, BorderSizePixel = 0, TextColor3 = PALETA.Branco,
+                Font = Enum.Font.Code, Text = "", TextSize = 14 }
+    for k, v in pairs(props) do p[k] = v end
+    return novo("TextLabel", p, pai)
 end
 
-local asciiAlpha = Instance.new("NumberValue")
+local TELA = UDim2.fromScale(1, 1)
+local G = {}
 
-do
-	local acc, lastArea = 0, nil
-	local start = os.clock()
+local gui = Instance.new("ScreenGui")
+gui.Name = "CapriProtocol"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.DisplayOrder = 999
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+pcall(function() gui.ScreenInsets = Enum.ScreenInsets.None end)
+gui.Parent = pegarGuiParent()
 
-	bind(RunService.RenderStepped, function(dt)
-		AsciiHolder.Position = Main.Position
-		if not asciiCfg.enabled then
-			return
-		end
+G.escuro = frame({ Size = TELA, ZIndex = 990 }, gui)
+novo("UIGradient", {
+    Rotation = 90,
+    Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(6, 10, 30)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(34, 6, 40)),
+    }),
+}, G.escuro)
 
-		local alpha = asciiAlpha.Value
-		if alpha <= 0.001 then
-			return
-		end
+G.scan = frame({ Size = TELA, ZIndex = 996, Visible = false }, gui)
+local nLinhas = 54
+for i = 1, nLinhas do
+    frame({ Size = UDim2.new(1, 0, 0, 2), Position = UDim2.new(0, 0, (i - 1) / nLinhas, 0),
+            BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.82, ZIndex = 996 }, G.scan)
+end
+G.roll = frame({ Size = UDim2.new(1, 0, 0.16, 0), Position = UDim2.new(0, 0, -0.2, 0),
+                 BackgroundColor3 = PALETA.Ciano, BackgroundTransparency = 0, ZIndex = 997 }, G.scan)
+novo("UIGradient", {
+    Rotation = 90,
+    Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.93), NumberSequenceKeypoint.new(1, 1),
+    }),
+}, G.roll)
 
-		acc += dt
-		if acc < 1 / asciiCfg.fps then
-			return
-		end
-		acc = 0
+local function criarAber(cor)
+    local f = frame({ Size = TELA, BackgroundColor3 = cor, ZIndex = 997 }, gui)
+    novo("UIGradient", {
+        Transparency = NumberSequence.new({
+            NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.3, 1),
+            NumberSequenceKeypoint.new(0.7, 1), NumberSequenceKeypoint.new(1, 0),
+        }),
+    }, f)
+    return f
+end
+G.aberR = criarAber(Color3.fromRGB(255, 0, 60))
+G.aberC = criarAber(PALETA.Ciano)
 
-		local s = MainScale.Scale > 0 and MainScale.Scale or 1
-		local abs = Main.AbsoluteSize
-		local inner = Vector2.new(math.floor(abs.X / s + 0.5), math.floor(abs.Y / s + 0.5))
-		local area = inner + Vector2.new(asciiCfg.padding * 2, asciiCfg.padding * 2)
-		if area ~= lastArea then
-			lastArea = area
-			AsciiHolder.Size = UDim2.fromOffset(area.X, area.Y)
-			ascii.rebuild(area, inner)
-		end
+G.vinheta = {}
+local function ladoVinheta(pos, tam, rot)
+    local f = frame({ Position = pos, Size = tam, BackgroundColor3 = PALETA.Vermelho, ZIndex = 998 }, gui)
+    novo("UIGradient", {
+        Rotation = rot,
+        Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) }),
+    }, f)
+    G.vinheta[#G.vinheta + 1] = f
+end
+ladoVinheta(UDim2.new(0, 0, 0, 0),    UDim2.new(1, 0, 0.38, 0), 90)
+ladoVinheta(UDim2.new(0, 0, 0.62, 0), UDim2.new(1, 0, 0.38, 0), 270)
+ladoVinheta(UDim2.new(0, 0, 0, 0),    UDim2.new(0.28, 0, 1, 0), 0)
+ladoVinheta(UDim2.new(0.72, 0, 0, 0), UDim2.new(0.28, 0, 1, 0), 180)
 
-		local mx, my
-		if asciiCfg.mouse then
-			local m = UserInputService:GetMouseLocation() - AsciiHolder.AbsolutePosition
-			if m.X >= 0 and m.Y >= 0 and m.X <= area.X and m.Y <= area.Y then
-				mx, my = m.X, m.Y
-			end
-		end
+G.letraTop = frame({ Size = UDim2.new(1, 0, 0, 0), BackgroundColor3 = Color3.new(0, 0, 0),
+                     BackgroundTransparency = 0, ZIndex = 1000 }, gui)
+frame({ AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 2),
+        BackgroundColor3 = PALETA.Ciano, BackgroundTransparency = 0.3, ZIndex = 1001 }, G.letraTop)
+G.letraBot = frame({ AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 0),
+                     BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0, ZIndex = 1000 }, gui)
+frame({ Position = UDim2.fromScale(0, 0), Size = UDim2.new(1, 0, 0, 2),
+        BackgroundColor3 = PALETA.Magenta, BackgroundTransparency = 0.3, ZIndex = 1001 }, G.letraBot)
 
-		ascii.render(os.clock() - start, alpha, mx, my)
-	end)
+G.hud = frame({ Size = TELA, ZIndex = 1002, Visible = false }, gui)
+
+local function criarTitulo(cor, dx, transp, z)
+    return texto({
+        Size = UDim2.new(0.8, 0, 0.12, 0), AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, dx, 0.40, 0), Font = Enum.Font.SciFi, TextScaled = true,
+        TextColor3 = cor, TextTransparency = transp, ZIndex = z,
+    }, G.hud)
+end
+G.tituloR = criarTitulo(PALETA.Vermelho, -4, 0.35, 1002)
+G.tituloC = criarTitulo(PALETA.Ciano, 4, 0.35, 1002)
+G.titulo  = criarTitulo(PALETA.Branco, 0, 0, 1003)
+G.titStroke = novo("UIStroke", { Color = PALETA.Vermelho, Thickness = 2, Transparency = 0.4 }, G.titulo)
+
+G.sub = texto({
+    Size = UDim2.new(0.8, 0, 0.032, 0), AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.new(0.5, 0, 0.485, 0), TextScaled = true, TextColor3 = PALETA.Ciano, ZIndex = 1003,
+}, G.hud)
+
+G.barraBg = frame({
+    Size = UDim2.new(0.34, 0, 0, 8), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.56, 0),
+    BackgroundColor3 = Color3.fromRGB(10, 14, 30), BackgroundTransparency = 0.2, ZIndex = 1003, Visible = false,
+}, G.hud)
+novo("UIStroke", { Color = PALETA.Ciano, Thickness = 1, Transparency = 0.3 }, G.barraBg)
+G.barraFill = frame({ Size = UDim2.new(0, 0, 1, 0), BackgroundColor3 = PALETA.Ciano,
+                      BackgroundTransparency = 0, ZIndex = 1004 }, G.barraBg)
+G.barraTag = texto({
+    Size = UDim2.new(1, 0, 0, 16), AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 0, -4),
+    TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = PALETA.Magenta, ZIndex = 1003,
+}, G.barraBg)
+G.barraPct = texto({
+    Size = UDim2.new(1, 0, 0, 16), AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 0, -4),
+    TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = PALETA.Ciano, ZIndex = 1003,
+}, G.barraBg)
+
+G.hexL = texto({
+    Size = UDim2.new(0.22, 0, 0.5, 0), Position = UDim2.new(0.02, 0, 0.25, 0),
+    TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top,
+    TextSize = 11, TextColor3 = PALETA.Ciano, TextTransparency = 0.45, ZIndex = 1003,
+}, G.hud)
+G.hexR = texto({
+    Size = UDim2.new(0.22, 0, 0.5, 0), Position = UDim2.new(0.76, 0, 0.25, 0),
+    TextXAlignment = Enum.TextXAlignment.Right, TextYAlignment = Enum.TextYAlignment.Top,
+    TextSize = 11, TextColor3 = PALETA.Magenta, TextTransparency = 0.45, ZIndex = 1003,
+}, G.hud)
+
+local ECG_N = 56
+G.ecg = frame({
+    Size = UDim2.new(0.36, 0, 0.1, 0), AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.new(0.5, 0, 0.8, 0), ZIndex = 1003,
+}, G.hud)
+G.ecgPts = {}
+for i = 1, ECG_N do
+    G.ecgPts[i] = frame({
+        Size = UDim2.new(0, 3, 0, 3), AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new((i - 1) / (ECG_N - 1), 0, 0.5, 0),
+        BackgroundColor3 = PALETA.Verde, BackgroundTransparency = 0.1, ZIndex = 1003,
+    }, G.ecg)
 end
 
-local UI = {}
-local isOpen, destroyed = false, false
+G.fx = frame({ Size = TELA, ZIndex = 1010 }, gui)
+G.flash = frame({ Size = TELA, BackgroundColor3 = PALETA.Branco, ZIndex = 1020 }, gui)
 
-local function open()
-	if isOpen or destroyed then
-		return
-	end
-	isOpen = true
-	Main.Visible = true
-	AsciiHolder.Visible = asciiCfg.enabled
-
-	MainScale.Scale = 0.88
-	fade(Main, 0, 0)
-	tween(MainScale, 0.55, {Scale = 1}, Enum.EasingStyle.Back)
-	fade(Main, 1, 0.35)
-	tween(asciiAlpha, 1, {Value = 1}, Enum.EasingStyle.Sine)
-	scramble(Title, title, 0.6)
-	task.defer(moveIndicator, true)
+--=============================================================
+-- EFEITOS 2D
+--=============================================================
+local function diagTela()
+    local c = workspace.CurrentCamera
+    return c and c.ViewportSize.Magnitude or 1400
 end
 
-local function hide(callback)
-	if not isOpen then
-		if callback then
-			callback()
-		end
-		return
-	end
-	isOpen = false
-	tween(MainScale, 0.25, {Scale = 0.9}, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-	fade(Main, 0, 0.22)
-	tween(asciiAlpha, 0.35, {Value = 0}, Enum.EasingStyle.Quad)
-	task.delay(0.36, function()
-		if not isOpen then
-			Main.Visible = false
-			AsciiHolder.Visible = false
-		end
-		if callback then
-			callback()
-		end
-	end)
+local function flashTela(cor, dur, t0)
+    G.flash.BackgroundColor3 = cor
+    G.flash.BackgroundTransparency = t0 or 0
+    tw(G.flash, dur or 0.2, { BackgroundTransparency = 1 })
 end
 
-function UI.Toggle()
-	if destroyed then
-		return
-	end
-	if isOpen then
-		hide()
-	else
-		open()
-	end
+local function vinhetaSet(cor, transp, dur)
+    for _, f in ipairs(G.vinheta) do
+        f.BackgroundColor3 = cor
+        tw(f, dur, { BackgroundTransparency = transp })
+    end
 end
 
-function UI.Destroy(instant)
-	if destroyed then
-		return
-	end
-	destroyed = true
-	local function finish()
-		for _, c in ipairs(connections) do
-			c:Disconnect()
-		end
-		asciiAlpha:Destroy()
-		ScreenGui:Destroy()
-		if env.__ProductFaker == UI then
-			env.__ProductFaker = nil
-		end
-	end
-	if instant then
-		finish()
-	else
-		hide(finish)
-	end
+local function letterbox(abrir, dur)
+    local alvo = abrir and 0.11 or 0
+    tw(G.letraTop, dur, { Size = UDim2.new(1, 0, alvo, 0) }, Enum.EasingStyle.Quart)
+    tw(G.letraBot, dur, { Size = UDim2.new(1, 0, alvo, 0) }, Enum.EasingStyle.Quart)
 end
 
-CloseButton.MouseButton1Click:Connect(function()
-	UI.Destroy()
-end)
-
-bind(UserInputService.InputBegan, function(input, gpe)
-	if not gpe and input.KeyCode == toggleKey then
-		UI.Toggle()
-	end
-end)
-
-local knownKinds = {}
-
-local infoTypes = {
-	Product = getEnum("InfoType", "Product"),
-	Gamepass = getEnum("InfoType", "GamePass"),
-	Asset = getEnum("InfoType", "Asset"),
-	Bundle = getEnum("InfoType", "Bundle"),
-	Subscription = getEnum("InfoType", "Subscription"),
-}
-
-local infoCache = {}
-local function getInfo(kind, id)
-	local key = kind .. ":" .. tostring(id)
-	if infoCache[key] ~= nil then
-		return infoCache[key]
-	end
-	local info = false
-	if infoTypes[kind] and tonumber(id) then
-		local ok, res = pcall(function()
-			return MarketplaceService:GetProductInfo(tonumber(id), infoTypes[kind])
-		end)
-		if ok and type(res) == "table" then
-			info = res
-		end
-	end
-	infoCache[key] = info
-	return info
+local aberToken = 0
+local function aberracao(dur, desloc, forca)
+    aberToken = aberToken + 1
+    local meu = aberToken
+    local ini = os.clock()
+    forca = forca or 0.45
+    local conn
+    conn = RunService.RenderStepped:Connect(function()
+        local p = (os.clock() - ini) / dur
+        if encerrado or meu ~= aberToken or p >= 1 then
+            conn:Disconnect()
+            if meu == aberToken then
+                G.aberR.BackgroundTransparency, G.aberC.BackgroundTransparency = 1, 1
+            end
+            return
+        end
+        local k = 1 - p
+        local d = desloc * k * (0.5 + math.random())
+        G.aberR.Position = UDim2.new(0, -d, 0, 0)
+        G.aberC.Position = UDim2.new(0, d, 0, 0)
+        local t = 1 - (1 - forca) * k * (0.6 + 0.4 * math.random())
+        G.aberR.BackgroundTransparency, G.aberC.BackgroundTransparency = t, t
+    end)
 end
 
-local function sendToFaker(id)
-	InpBox.Text = tostring(id)
-	setTabByName("Faker")
-	toast("ID loaded: " .. tostring(id))
+local function glitchBlocos(dur, taxa)
+    task.spawn(function()
+        local ini = os.clock()
+        while os.clock() - ini < dur and not encerrado do
+            for _ = 1, N(taxa) do
+                local larg = math.random(6, 40) / 100
+                local b = frame({
+                    Size = UDim2.new(larg, 0, 0, math.random(2, 14)),
+                    Position = UDim2.new(math.random() * (1 - larg), 0, math.random(), 0),
+                    BackgroundColor3 = pick(NEONS), BackgroundTransparency = rf(0.15, 0.6), ZIndex = 1012,
+                }, G.fx)
+                task.delay(rf(0.03, 0.11), function() b:Destroy() end)
+            end
+            task.wait(0.05)
+        end
+    end)
 end
 
--- fake
+local function estrelaFlare(cor, dur)
+    local diag = diagTela()
+    local miolo = frame({
+        Size = UDim2.new(0, 0, 0, 0), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+        BackgroundColor3 = PALETA.Branco, BackgroundTransparency = 0, ZIndex = 1015,
+    }, G.fx)
+    novo("UICorner", { CornerRadius = UDim.new(1, 0) }, miolo)
+    tw(miolo, dur * 0.35, { Size = UDim2.fromOffset(44, 44) }, Enum.EasingStyle.Back)
+    task.delay(dur * 0.35, function()
+        tw(miolo, dur * 0.65, { Size = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 1 })
+    end)
+    task.delay(dur + 0.1, function() miolo:Destroy() end)
 
-local fire = {
-	Product = function(id)
-		MarketplaceService:SignalPromptProductPurchaseFinished(LocalPlayer.UserId, id, true)
-	end,
-	Gamepass = function(id)
-		MarketplaceService:SignalPromptGamePassPurchaseFinished(LocalPlayer, id, true)
-	end,
-	Asset = function(id)
-		MarketplaceService:SignalPromptPurchaseFinished(LocalPlayer, id, true)
-	end,
-	Bundle = function(id)
-		MarketplaceService:SignalPromptBundlePurchaseFinished(LocalPlayer, id, true)
-	end,
-}
-
-local function detectKind(id)
-	local known = knownKinds[tostring(id)]
-	if known and fire[known] then
-		return known
-	end
-	for _, kind in ipairs({"Product", "Gamepass", "Asset"}) do
-		if getInfo(kind, id) then
-			knownKinds[tostring(id)] = kind
-			return kind
-		end
-	end
-	return "Product"
+    local function raio(rot, compr, esp, corR)
+        local r = frame({
+            Size = UDim2.new(0, 0, 0, esp), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+            Rotation = rot, BackgroundColor3 = corR, BackgroundTransparency = 0, ZIndex = 1014,
+        }, G.fx)
+        novo("UIGradient", {
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(1, 1),
+            }),
+        }, r)
+        tw(r, dur * 0.4, { Size = UDim2.new(0, compr, 0, esp) }, Enum.EasingStyle.Quart)
+        task.delay(dur * 0.4, function()
+            tw(r, dur * 0.6, { Size = UDim2.new(0, compr * 1.25, 0, 0), BackgroundTransparency = 1 })
+        end)
+        task.delay(dur + 0.1, function() r:Destroy() end)
+    end
+    raio(0, diag * 1.2, 4, cor)
+    raio(90, diag * 0.7, 3, PALETA.Branco)
+    raio(45, diag * 0.35, 2, cor)
+    raio(-45, diag * 0.35, 2, cor)
 end
 
-local function fakePurchase(id)
-	local kind = detectKind(id)
-	fire[kind](id)
-	return kind
+local function ondaDiamante(cor, dur, atraso)
+    task.delay(atraso or 0, function()
+        if encerrado then return end
+        local diag = diagTela()
+        local f = frame({
+            Size = UDim2.fromOffset(0, 0), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+            Rotation = 45, ZIndex = 1011,
+        }, G.fx)
+        local st = novo("UIStroke", { Color = cor, Thickness = 5, Transparency = 0.15 }, f)
+        tw(f, dur, { Size = UDim2.fromOffset(diag, diag) }, Enum.EasingStyle.Quart)
+        tw(st, dur, { Transparency = 1, Thickness = 1 }, Enum.EasingStyle.Quart)
+        task.delay(dur + 0.05, function() f:Destroy() end)
+    end)
 end
 
-local function submitFake()
-	local id = tonumber((InpBox.Text:gsub("%s", "")):match("^%d+$"))
-	if not id then
-		shake(IdInput, idInputPos)
-		IdStroke.Color = col.red
-		IdStroke.Transparency = 0.3
-		tween(IdStroke, 0.6, {Color = col.white, Transparency = 0.86})
-		toast("Enter a valid ID", col.red)
-		return
-	end
-	local ok, res = pcall(fakePurchase, id)
-	if ok then
-		toast("Fired " .. res:lower() .. " " .. id, col.green)
-	else
-		warn("[Product Faker] " .. tostring(res))
-		toast("Error, check console", col.red)
-	end
+local function particulas2D(qtd, cores)
+    for _ = 1, N(qtd) do
+        local lado = math.random(4, 10)
+        local p = frame({
+            Size = UDim2.fromOffset(lado, lado), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+            Rotation = math.random(0, 90), BackgroundColor3 = pick(cores),
+            BackgroundTransparency = rf(0.05, 0.4), ZIndex = 1013,
+        }, G.fx)
+        local ang = math.random() * math.pi * 2
+        local dist = rf(0.35, 1.0)
+        local dur = rf(0.45, 0.9)
+        tw(p, dur, {
+            Position = UDim2.fromScale(0.5 + math.cos(ang) * dist, 0.5 + math.sin(ang) * dist),
+            BackgroundTransparency = 1, Size = UDim2.fromOffset(0, 0),
+            Rotation = p.Rotation + math.random(-180, 180),
+        }, Enum.EasingStyle.Quart)
+        task.delay(dur + 0.05, function() p:Destroy() end)
+    end
 end
 
-FakeButton.MouseButton1Click:Connect(submitFake)
-InpBox.FocusLost:Connect(function(enterPressed)
-	tween(IdStroke, 0.2, {Transparency = 0.86})
-	tween(IdInput, 0.2, {BackgroundColor3 = col.panel})
-	if enterPressed then
-		submitFake()
-	end
-end)
-
--- pass finder
-
-local function addPass(data)
-	knownKinds[tostring(data.id)] = data.kind
-	local icon = data.icon
-	if not icon and data.kind == "Gamepass" then
-		icon = ("rbxthumb://type=GamePass&id=%d&w=150&h=150"):format(data.id)
-	end
-	local price = data.price and ("R$" .. commas(data.price)) or "Offsale"
-	return makeRow(GamepassList, {
-		title = data.name or tostring(data.id),
-		sub = data.kind .. "  •  " .. price,
-		icon = icon,
-		order = data.order,
-		onClick = function()
-			sendToFaker(data.id)
-		end,
-	}, img.copy, function()
-		copyId(data.id)
-	end)
+local function gradeDecrypt()
+    local cols, lins = N(16), N(9)
+    local cont = frame({ Size = TELA, ZIndex = 992, ClipsDescendants = true }, gui)
+    for c = 0, cols - 1 do
+        for l = 0, lins - 1 do
+            local r = math.random()
+            local cor, transp = PALETA.Escuro, 0.08
+            if r > 0.94 then cor, transp = PALETA.Ciano, 0.25
+            elseif r > 0.88 then cor, transp = PALETA.Magenta, 0.25 end
+            local cel = frame({
+                Size = UDim2.new(1 / cols, 1, 1 / lins, 1), Position = UDim2.new(c / cols, 0, l / lins, 0),
+                BackgroundColor3 = cor, BackgroundTransparency = transp, ZIndex = 992,
+            }, cont)
+            task.delay((c / cols) * 0.35 + math.random() * 0.25, function()
+                tw(cel, 0.18, { BackgroundTransparency = 1 })
+            end)
+        end
+    end
+    task.delay(1.0, function() cont:Destroy() end)
 end
 
-local httpRequest = (typeof(request) == "function" and request)
-	or (typeof(http_request) == "function" and http_request)
-	or (syn and syn.request)
-	or (http and http.request)
-	or (fluxus and fluxus.request)
-
-local function getJson(url)
-	local body
-	if httpRequest then
-		local ok, res = pcall(httpRequest, {Url = url, Method = "GET"})
-		if ok and type(res) == "table" and (res.StatusCode == 200 or (res.StatusCode == nil and res.Success)) then
-			body = res.Body
-		end
-	end
-	if not body then
-		local ok, res = pcall(function()
-			return game:HttpGet(url)
-		end)
-		if ok then
-			body = res
-		end
-	end
-	if type(body) ~= "string" or body == "" then
-		return nil
-	end
-	local ok, data = pcall(HttpService.JSONDecode, HttpService, body)
-	return ok and data or nil
+--=============================================================
+-- EFEITOS 3D
+--=============================================================
+local function novaParte(props)
+    local p = Instance.new("Part")
+    p.Anchored = true
+    p.CanCollide, p.CanTouch, p.CanQuery = false, false, false
+    p.CastShadow = false
+    p.Massless = true
+    p.Material = Enum.Material.Neon
+    p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+    for k, v in pairs(props) do p[k] = v end
+    p.Parent = fxFolder
+    return p
 end
 
-local function nonEmpty(s)
-	return type(s) == "string" and s ~= "" and s or nil
+local function alturaChao(pos, ignorar)
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    local lista = { fxFolder }
+    if ignorar then lista[#lista + 1] = ignorar end
+    params.FilterDescendantsInstances = lista
+    local r = workspace:Raycast(pos + Vector3.new(0, 2, 0), Vector3.new(0, -40, 0), params)
+    return r and (r.Position.Y + 0.15) or (pos.Y - 3)
 end
 
--- new endpoint first, legacy as fallback, roproxy for executors that block roblox.com
-local passSources = {
-	{
-		hosts = {"apis.roblox.com", "apis.roproxy.com"},
-		url = function(host, universeId, cursor)
-			local page = cursor and "&pageToken=" .. HttpService:UrlEncode(cursor) or ""
-			return ("https://%s/game-passes/v1/universes/%d/game-passes?passView=Full&pageSize=100%s"):format(host, universeId, page)
-		end,
-		parse = function(d)
-			if type(d) ~= "table" or type(d.gamePasses) ~= "table" then
-				return nil
-			end
-			local out = {}
-			for _, p in ipairs(d.gamePasses) do
-				local priceInfo = type(p.priceInformation) == "table" and p.priceInformation or {}
-				table.insert(out, {
-					id = p.id or p.gamePassId,
-					name = p.displayName or p.name,
-					price = p.price or priceInfo.defaultPriceInRobux or priceInfo.price,
-				})
-			end
-			return out, nonEmpty(d.nextPageToken)
-		end,
-	},
-	{
-		hosts = {"games.roblox.com", "games.roproxy.com"},
-		url = function(host, universeId, cursor)
-			local page = cursor and "&cursor=" .. HttpService:UrlEncode(cursor) or ""
-			return ("https://%s/v1/games/%d/game-passes?limit=100&sortOrder=Asc%s"):format(host, universeId, page)
-		end,
-		parse = function(d)
-			if type(d) ~= "table" or type(d.data) ~= "table" then
-				return nil
-			end
-			local out = {}
-			for _, p in ipairs(d.data) do
-				table.insert(out, {id = p.id, name = p.displayName or p.name, price = p.price})
-			end
-			return out, nonEmpty(d.nextPageCursor)
-		end,
-	},
-}
-
-local function fetchGamepasses(universeId)
-	for _, source in ipairs(passSources) do
-		for _, host in ipairs(source.hosts) do
-			local all, cursor = source.parse(getJson(source.url(host, universeId)))
-			if all then
-				local pages = 1
-				while cursor and pages < 25 do
-					local more, nextCursor = source.parse(getJson(source.url(host, universeId, cursor)))
-					if not more then
-						break
-					end
-					for _, p in ipairs(more) do
-						table.insert(all, p)
-					end
-					cursor, pages = nextCursor, pages + 1
-				end
-				return all
-			end
-		end
-	end
-	return nil
+local function feixeSatelite(pos)
+    local alt = 450
+    local centro = CFrame.new(pos + Vector3.new(0, alt / 2, 0)) * CFrame.Angles(0, 0, math.rad(90))
+    local halo = novaParte({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(alt, 1, 1), CFrame = centro,
+                             Color = PALETA.Ciano, Transparency = 0.55 })
+    local nucleo = novaParte({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(alt, 0.4, 0.4), CFrame = centro,
+                               Color = PALETA.Branco, Transparency = 0.05 })
+    tw(halo, 0.12, { Size = Vector3.new(alt, 9, 9) }, Enum.EasingStyle.Quint)
+    tw(nucleo, 0.12, { Size = Vector3.new(alt, 3, 3) }, Enum.EasingStyle.Quint)
+    task.delay(0.16, function()
+        tw(halo, 0.75, { Size = Vector3.new(alt, 0.3, 0.3), Transparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+        tw(nucleo, 0.6, { Size = Vector3.new(alt, 0.1, 0.1), Transparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+    end)
+    task.delay(1.1, function() halo:Destroy(); nucleo:Destroy() end)
 end
 
-local function fetchProducts()
-	local ok, pages = pcall(function()
-		return MarketplaceService:GetDeveloperProductsAsync()
-	end)
-	if not ok or not pages then
-		return nil
-	end
-	local out = {}
-	for _ = 1, 50 do
-		local okPage, page = pcall(function()
-			return pages:GetCurrentPage()
-		end)
-		if not okPage then
-			break
-		end
-		for _, item in ipairs(page) do
-			local iconId = item.IconImageAssetId
-			table.insert(out, {
-				id = item.ProductId or item.DeveloperProductId,
-				name = item.Name or item.DisplayName,
-				price = item.PriceInRobux,
-				icon = iconId and iconId ~= 0 and "rbxassetid://" .. iconId or nil,
-			})
-		end
-		if pages.IsFinished or not pcall(function() pages:AdvanceToNextPageAsync() end) then
-			break
-		end
-	end
-	return out
+local function discoChao(pos, cor, raio, dur, atraso)
+    task.delay(atraso or 0, function()
+        if encerrado then return end
+        local d = novaParte({ Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.3, 2, 2),
+                              CFrame = CFrame.new(pos) * CFrame.Angles(0, 0, math.rad(90)),
+                              Color = cor, Transparency = 0.3 })
+        tw(d, dur, { Size = Vector3.new(0.3, raio * 2, raio * 2), Transparency = 1 }, Enum.EasingStyle.Quart)
+        task.delay(dur + 0.1, function() d:Destroy() end)
+    end)
 end
 
-local scanning = false
-scanProducts = function()
-	if scanning or destroyed then
-		return
-	end
-	scanning = true
-	clearList(GamepassList)
-	local empty = emptyLabels[GamepassList]
-	empty.Text = "Scanning..."
-
-	task.spawn(function()
-		local passes, products
-		task.spawn(function()
-			passes = fetchGamepasses(game.GameId) or false
-		end)
-		task.spawn(function()
-			products = fetchProducts() or false
-		end)
-		while (passes == nil or products == nil) and not destroyed do
-			task.wait()
-		end
-		if destroyed then
-			return
-		end
-
-		local function byPrice(a, b)
-			return (a.price or math.huge) < (b.price or math.huge)
-		end
-
-		local order = 0
-		for _, group in ipairs({{passes, "Gamepass"}, {products, "Product"}}) do
-			local items, kind = group[1], group[2]
-			if items then
-				table.sort(items, byPrice)
-				for _, item in ipairs(items) do
-					if item.id then
-						order += 1
-						addPass({id = item.id, name = item.name, price = item.price, icon = item.icon, kind = kind, order = order})
-					end
-				end
-			end
-		end
-
-		empty.Text = "Nothing found for this game."
-		local nPasses, nProducts = passes and #passes or 0, products and #products or 0
-		if not passes and not products then
-			toast("Couldn't fetch passes or products", col.red)
-		elseif not passes then
-			toast(("Found %d products, gamepass fetch failed"):format(nProducts), col.yellow)
-		elseif not products then
-			toast(("Found %d gamepasses, product fetch failed"):format(nPasses), col.yellow)
-		else
-			toast(("Found %d gamepasses, %d products"):format(nPasses, nProducts), col.green)
-		end
-		scanning = false
-	end)
+local function luzFlash(pos, cor, dur)
+    local p = novaParte({ Size = Vector3.new(0.5, 0.5, 0.5), CFrame = CFrame.new(pos), Transparency = 1 })
+    local l = novo("PointLight", { Color = cor, Range = 40, Brightness = 10, Shadows = false }, p)
+    tw(l, dur, { Brightness = 0, Range = 12 })
+    task.delay(dur + 0.1, function() p:Destroy() end)
 end
 
--- logger
-
-emptyLabels[ProductLogger].Text = "Waiting for purchase prompts..."
-
-local logLimit = 100
-local logOrder = 0
-local logRows = {}
-local lastPrompt = {}
-local pendingRows = {}
-
-local function iconFor(kind, id, info)
-	local n = tonumber(id)
-	if n and kind == "Gamepass" then
-		return ("rbxthumb://type=GamePass&id=%d&w=150&h=150"):format(n)
-	elseif n and kind == "Asset" then
-		return ("rbxthumb://type=Asset&id=%d&w=150&h=150"):format(n)
-	elseif n and kind == "Bundle" then
-		return ("rbxthumb://type=BundleThumbnail&id=%d&w=150&h=150"):format(n)
-	end
-	local iconId = info and info.IconImageAssetId
-	if iconId and iconId ~= 0 then
-		return "rbxassetid://" .. iconId
-	end
+local function particulas3D(parteBase, qtd, cores)
+    local att = Instance.new("Attachment")
+    att.Parent = parteBase
+    local seq = {}
+    for i, cor in ipairs(cores) do
+        seq[i] = ColorSequenceKeypoint.new((i - 1) / math.max(#cores - 1, 1), cor)
+    end
+    novo("ParticleEmitter", {
+        Color = ColorSequence.new(seq), LightEmission = 1, Rate = 0,
+        Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.7), NumberSequenceKeypoint.new(1, 0) }),
+        Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(1, 1) }),
+        Lifetime = NumberRange.new(0.5, 1.3), Speed = NumberRange.new(14, 34),
+        SpreadAngle = Vector2.new(180, 180), Drag = 3,
+        Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-300, 300),
+    }, att)
+    local em = att:FindFirstChildOfClass("ParticleEmitter")
+    if em then pcall(function() em:Emit(N(qtd)) end) end
+    task.delay(2, function() att:Destroy() end)
 end
 
-local function addLog(data)
-	logOrder -= 1
-	knownKinds[tostring(data.id)] = data.kind
-	local sub = {data.kind}
-	if data.price then
-		table.insert(sub, "R$" .. commas(data.price))
-	end
-	table.insert(sub, os.date("%H:%M:%S"))
-
-	local row = makeRow(ProductLogger, {
-		title = data.name or tostring(data.id),
-		sub = table.concat(sub, "  •  "),
-		icon = data.icon,
-		order = logOrder,
-		onClick = function()
-			sendToFaker(data.id)
-		end,
-	}, img.copy, function()
-		copyId(data.id)
-	end)
-
-	table.insert(logRows, row)
-	if #logRows > logLimit then
-		table.remove(logRows, 1):Destroy()
-	end
-	return row
+local function listarPartes(character, semRaiz)
+    local lista = {}
+    for _, d in ipairs(character:GetDescendants()) do
+        if d:IsA("BasePart") and (not semRaiz or d.Name ~= "HumanoidRootPart") and d.Transparency < 0.95 then
+            lista[#lista + 1] = d
+        end
+    end
+    return lista
 end
 
-local function logPrompt(kind, id)
-	if destroyed or id == nil then
-		return
-	end
-	local key = kind .. ":" .. tostring(id)
-	local now = os.clock()
-	if lastPrompt[key] and now - lastPrompt[key] < 0.5 then
-		return
-	end
-	lastPrompt[key] = now
+local function voxelDesintegrar(character)
+    local partes = listarPartes(character, true)
+    if #partes == 0 then return end
 
-	task.spawn(function()
-		local info = getInfo(kind, id)
-		if destroyed then
-			return
-		end
-		pendingRows[key] = addLog({
-			id = id,
-			kind = kind,
-			name = info and (info.Name or info.DisplayName),
-			price = info and (info.PriceInRobux or info.Price),
-			icon = iconFor(kind, id, info),
-		})
-		if not ProductLogger.Visible then
-			toast(("Logged %s %s"):format(kind:lower(), tostring(id)))
-		end
-	end)
+    task.spawn(function()
+        local ini = os.clock()
+        while os.clock() - ini < 0.9 and not encerrado do
+            local a = (os.clock() - ini) / 0.9
+            for _, p in ipairs(partes) do
+                if p.Parent then
+                    p.LocalTransparencyModifier = math.min(1, a * 1.3 + (math.random() < 0.2 and 0.25 or 0))
+                end
+            end
+            task.wait(0.04)
+        end
+        for _, p in ipairs(partes) do
+            if p.Parent then p.LocalTransparencyModifier = 1 end
+        end
+    end)
+
+    for _ = 1, N(CONFIG.Morte.Voxels) do
+        local base = pick(partes)
+        local s = base.Size
+        local off = Vector3.new(rf(-0.5, 0.5) * s.X, rf(-0.5, 0.5) * s.Y, rf(-0.5, 0.5) * s.Z)
+        local pos = base.CFrame:PointToWorldSpace(off)
+        local tam = rf(0.18, 0.5)
+        local cubo = novaParte({ Size = Vector3.new(tam, tam, tam), CFrame = CFrame.new(pos),
+                                 Color = pick(NEONS), Transparency = rf(0, 0.25) })
+        local dir = Vector3.new(rf(-1, 1), rf(0.2, 1.4), rf(-1, 1))
+        if dir.Magnitude < 0.01 then dir = Vector3.new(0, 1, 0) end
+        local dest = pos + dir.Unit * rf(4, 13)
+        local dur = rf(0.7, 1.5)
+        tw(cubo, dur, {
+            CFrame = CFrame.new(dest) * CFrame.Angles(rf(0, 6.28), rf(0, 6.28), rf(0, 6.28)),
+            Size = Vector3.new(0.04, 0.04, 0.04), Transparency = 1,
+        }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        task.delay(dur + 0.1, function() cubo:Destroy() end)
+    end
 end
 
-local function markFinished(kind, id, purchased)
-	local key = kind .. ":" .. tostring(id)
-	local row = pendingRows[key]
-	pendingRows[key] = nil
-	local sub = row and row.Parent and row:FindFirstChild("Sub")
-	if sub then
-		sub.Text ..= "  •  " .. (purchased and "Bought" or "Closed")
-		tween(sub, 0.3, {TextColor3 = purchased and col.green or col.dim})
-	end
+local function voxelMaterializar(rp)
+    local centro = rp.Position
+    for _ = 1, N(CONFIG.Respawn.Voxels) do
+        local dir = Vector3.new(rf(-1, 1), rf(-0.3, 1), rf(-1, 1))
+        if dir.Magnitude < 0.01 then dir = Vector3.new(1, 0, 0) end
+        local ini = centro + dir.Unit * rf(10, 18)
+        local alvo = centro + Vector3.new(rf(-1.2, 1.2), rf(-2.5, 2.5), rf(-1.2, 1.2))
+        local tam = rf(0.2, 0.55)
+        local cubo = novaParte({ Size = Vector3.new(tam, tam, tam), CFrame = CFrame.new(ini),
+                                 Color = pick(NEONS), Transparency = 0.1 })
+        local dur = rf(0.35, 0.65)
+        tw(cubo, dur, {
+            CFrame = CFrame.new(alvo) * CFrame.Angles(rf(0, 6.28), rf(0, 6.28), rf(0, 6.28)),
+            Size = Vector3.new(0.05, 0.05, 0.05), Transparency = 0.8,
+        }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+        task.delay(dur + 0.1, function() cubo:Destroy() end)
+    end
 end
 
-local function firstId(...)
-	for i = 1, select("#", ...) do
-		local v = select(i, ...)
-		if type(v) == "number" or (type(v) == "string" and v ~= "") then
-			return v
-		end
-	end
+local function highlightGlitch(character, dur)
+    local h = novo("Highlight", {
+        Adornee = character, FillColor = PALETA.Ciano, OutlineColor = PALETA.Branco,
+        FillTransparency = 0.3, OutlineTransparency = 0, DepthMode = Enum.HighlightDepthMode.AlwaysOnTop,
+    }, fxFolder)
+    local cores = { PALETA.Ciano, PALETA.Magenta, PALETA.Amarelo, PALETA.Branco }
+    local ini = os.clock()
+    while os.clock() - ini < dur and character.Parent and not encerrado do
+        local p = (os.clock() - ini) / dur
+        h.FillColor = pick(cores)
+        h.FillTransparency = 0.25 + 0.75 * p * p
+        h.OutlineTransparency = p * p
+        h.Enabled = math.random() > 0.15
+        task.wait(0.045)
+    end
+    h:Destroy()
 end
 
-local function lastBool(...)
-	for i = select("#", ...), 1, -1 do
-		local v = select(i, ...)
-		if type(v) == "boolean" then
-			return v
-		end
-	end
-	return false
+local function piscarCorpo(character, dur)
+    local partes, originais = {}, {}
+    for _, d in ipairs(character:GetDescendants()) do
+        if d:IsA("BasePart") then
+            partes[#partes + 1] = d
+            originais[d] = d.LocalTransparencyModifier
+        end
+    end
+    local ini = os.clock()
+    while os.clock() - ini < dur and character.Parent and not encerrado do
+        local p = (os.clock() - ini) / dur
+        local v = (math.random() < (1 - p) * 0.8) and rf(0.4, 1) or 0
+        for _, part in ipairs(partes) do part.LocalTransparencyModifier = v end
+        task.wait(0.04)
+    end
+    for _, part in ipairs(partes) do
+        if part.Parent then part.LocalTransparencyModifier = originais[part] or 0 end
+    end
 end
 
-local promptKinds = {
-	ProductPurchase = "Product",
-	GamePassPurchase = "Gamepass",
-	Purchase = "Asset",
-	BundlePurchase = "Bundle",
-	SubscriptionPurchase = "Subscription",
-}
+--=============================================================
+-- HUD (texto, ECG, barra)
+--=============================================================
+local CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#$%&@<>/\\|"
+local revTokens = {}
 
-local hooked = 0
-for suffix, kind in pairs(promptKinds) do
-	-- first arg is the player (or userId on product finished), skip it
-	local ok = pcall(function()
-		bind(MarketplaceService["Prompt" .. suffix .. "Requested"], function(_, ...)
-			logPrompt(kind, firstId(...))
-		end)
-	end)
-	if ok then
-		hooked += 1
-	end
-	pcall(function()
-		bind(MarketplaceService["Prompt" .. suffix .. "Finished"], function(_, ...)
-			markFinished(kind, firstId(...), lastBool(...))
-		end)
-	end)
+local function revelar(labels, alvo, dur)
+    local chave = labels[1]
+    revTokens[chave] = (revTokens[chave] or 0) + 1
+    local meu = revTokens[chave]
+    task.spawn(function()
+        local ini, n = os.clock(), #alvo
+        while not encerrado and revTokens[chave] == meu do
+            local p = (os.clock() - ini) / dur
+            if p >= 1 then break end
+            local fixos = math.floor(p * n)
+            local partes = { alvo:sub(1, fixos) }
+            for i = fixos + 1, n do
+                local ch = alvo:sub(i, i)
+                if ch == " " then
+                    partes[#partes + 1] = " "
+                else
+                    local r = math.random(#CHARS)
+                    partes[#partes + 1] = CHARS:sub(r, r)
+                end
+            end
+            local s = table.concat(partes)
+            for _, l in ipairs(labels) do l.Text = s end
+            task.wait(0.03)
+        end
+        if revTokens[chave] == meu then
+            for _, l in ipairs(labels) do l.Text = alvo end
+        end
+    end)
 end
 
-if hooked == 0 and typeof(hookmetamethod) == "function" and typeof(getnamecallmethod) == "function" then
-	local old
-	local function handler(self, ...)
-		local method = getnamecallmethod()
-		if not destroyed and self == MarketplaceService and method:sub(1, 6) == "Prompt" then
-			local kind = promptKinds[method:sub(7)]
-			if kind then
-				task.spawn(logPrompt, kind, select(2, ...))
-			end
-		end
-		return old(self, ...)
-	end
-	pcall(function()
-		old = hookmetamethod(game, "__namecall", typeof(newcclosure) == "function" and newcclosure(handler) or handler)
-	end)
+local function hexLinha(n)
+    local t = {}
+    for i = 1, n do
+        t[i] = string.format("%04X %06X %02X", math.random(0, 65535), math.random(0, 16777215), math.random(0, 255))
+    end
+    return table.concat(t, "\n")
 end
 
--- supported games
-
-local function getFromHosts(path, hosts)
-	for _, host in ipairs(hosts) do
-		local d = getJson("https://" .. host .. path)
-		if type(d) == "table" then
-			return d
-		end
-	end
+local function ecgValor(fase)
+    if fase < 0.10 then return 0.12 * math.sin(fase / 0.10 * math.pi)
+    elseif fase < 0.16 then return 0
+    elseif fase < 0.19 then return -0.18
+    elseif fase < 0.23 then return 1.0
+    elseif fase < 0.27 then return -0.35
+    elseif fase < 0.34 then return 0
+    elseif fase < 0.50 then return 0.22 * math.sin((fase - 0.34) / 0.16 * math.pi)
+    end
+    return 0
 end
 
-local universeCache = {}
-local function getUniverseId(placeId)
-	if placeId == game.PlaceId and game.GameId ~= 0 then
-		return game.GameId
-	end
-	if universeCache[placeId] then
-		return universeCache[placeId]
-	end
-	local d = getFromHosts("/universes/v1/places/" .. placeId .. "/universe", {"apis.roblox.com", "apis.roproxy.com"})
-	local id = d and tonumber(d.universeId)
-	universeCache[placeId] = id
-	return id
+local function iniciarHudMorte(ciclo)
+    if not CONFIG.Hud.Ativo then return end
+    if hudConn then hudConn:Disconnect(); hudConn = nil end
+    local M = CONFIG.Morte
+    local lista = { G.titulo, G.tituloR, G.tituloC }
+
+    G.hud.Visible = true
+    G.titStroke.Color = PALETA.Vermelho
+    G.tituloR.TextColor3 = PALETA.Vermelho
+    G.tituloC.TextColor3 = PALETA.Ciano
+    G.barraBg.Visible = false
+    G.barraFill.Size = UDim2.new(0, 0, 1, 0)
+    G.barraTag.Text, G.barraPct.Text = "", ""
+    G.ecg.Visible = M.ECG and true or false
+    for _, p in ipairs(G.ecgPts) do p.BackgroundColor3 = PALETA.Verde end
+    G.hexL.Visible, G.hexR.Visible = true, true
+
+    if CONFIG.Hud.Textos then
+        revelar(lista, "SIGNAL LOST", 0.55)
+        revelar({ G.sub }, "NEURAL LINK SEVERED", 0.6)
+    else
+        for _, l in ipairs(lista) do l.Text = "" end
+        G.sub.Text = ""
+    end
+
+    local okRT, rt = pcall(function() return Players.RespawnTime end)
+    local tempoEst = math.max((okRT and tonumber(rt)) or 5, 1.5)
+    local ini = os.clock()
+    local ultHex, ultEcg, fase, flat = 0, 0, 0, false
+    local mostrouBarra = false
+    local amostras = {}
+    for i = 1, ECG_N do amostras[i] = 0 end
+
+    local conn
+    conn = RunService.RenderStepped:Connect(function()
+        if encerrado or cicloAtual ~= ciclo or not emMorte then
+            conn:Disconnect()
+            if hudConn == conn then hudConn = nil end
+            return
+        end
+        local t = os.clock() - ini
+
+        G.roll.Position = UDim2.new(0, 0, ((t * 0.45) % 1.3) - 0.2, 0)
+
+        if math.random() < 0.07 then
+            G.tituloR.Position = UDim2.new(0.5, -math.random(3, 12), 0.40, math.random(-3, 3))
+            G.tituloC.Position = UDim2.new(0.5, math.random(3, 12), 0.40, math.random(-3, 3))
+        else
+            G.tituloR.Position = UDim2.new(0.5, -4, 0.40, 0)
+            G.tituloC.Position = UDim2.new(0.5, 4, 0.40, 0)
+        end
+
+        if t > 1.1 then
+            if not mostrouBarra then
+                mostrouBarra = true
+                G.barraBg.Visible = true
+                G.barraTag.Text = "CAPRI.EXE"
+                if CONFIG.Hud.Textos then revelar({ G.sub }, "RECONSTRUCTING CONSTRUCT", 0.6) end
+            end
+            local x = (t - 1.1) / math.max(tempoEst - 1.1, 1)
+            local prog = 0.97 * (1 - math.exp(-2.2 * x))
+            G.barraFill.Size = UDim2.new(prog, 0, 1, 0)
+            G.barraPct.Text = string.format("%d%%", math.floor(prog * 100))
+        end
+
+        if t - ultHex > 0.08 then
+            ultHex = t
+            G.hexL.Text = hexLinha(18)
+            G.hexR.Text = hexLinha(18)
+        end
+
+        if M.ECG and t - ultEcg > 0.025 then
+            ultEcg = t
+            local v
+            if t < 0.9 then
+                fase = (fase + 0.025 / 0.55) % 1
+                v = ecgValor(fase)
+            else
+                v = (math.random() - 0.5) * 0.02
+                if not flat then
+                    flat = true
+                    for _, p in ipairs(G.ecgPts) do p.BackgroundColor3 = PALETA.Vermelho end
+                end
+            end
+            table.remove(amostras, 1)
+            amostras[#amostras + 1] = v
+            for i = 1, ECG_N do
+                G.ecgPts[i].Position = UDim2.new((i - 1) / (ECG_N - 1), 0, 0.5 - amostras[i] * 0.45, 0)
+            end
+        end
+    end)
+    hudConn = conn
 end
 
-local function getGameStats(universeIds)
-	local out = {}
-	for i = 1, #universeIds, 50 do
-		local chunk = table.concat(universeIds, ",", i, math.min(i + 49, #universeIds))
-		local d = getFromHosts("/v1/games?universeIds=" .. chunk, {"games.roblox.com", "games.roproxy.com"})
-		if d and type(d.data) == "table" then
-			for _, g in ipairs(d.data) do
-				out[tonumber(g.id)] = g
-			end
-		end
-	end
-	return out
+local function hudRespawn(ciclo)
+    if not CONFIG.Hud.Ativo then return end
+    local lista = { G.titulo, G.tituloR, G.tituloC }
+
+    G.hud.Visible = true
+    G.ecg.Visible = false
+    G.hexL.Visible, G.hexR.Visible = false, false
+    G.titStroke.Color = PALETA.Ciano
+    G.tituloR.TextColor3 = PALETA.Magenta
+    G.tituloC.TextColor3 = PALETA.Ciano
+    G.tituloR.Position = UDim2.new(0.5, -4, 0.40, 0)
+    G.tituloC.Position = UDim2.new(0.5, 4, 0.40, 0)
+    G.barraBg.Visible = true
+    G.barraTag.Text = "CAPRI.EXE"
+    G.barraPct.Text = "100%"
+    tw(G.barraFill, 0.18, { Size = UDim2.new(1, 0, 1, 0) })
+
+    if CONFIG.Hud.Textos then
+        local nome = string.upper((player.DisplayName:gsub("[^%w _%-]", "")))
+        if nome == "" then nome = "NETRUNNER" end
+        revelar(lista, "CONSTRUCT ONLINE", 0.5)
+        revelar({ G.sub }, "WELCOME BACK, " .. nome, 0.55)
+    else
+        for _, l in ipairs(lista) do l.Text = "" end
+        G.sub.Text = ""
+    end
+
+    task.delay(1.7, function()
+        if encerrado or cicloAtual ~= ciclo or emMorte then return end
+        for _ = 1, 3 do
+            G.hud.Visible = false; task.wait(0.04)
+            G.hud.Visible = true;  task.wait(0.04)
+        end
+        if cicloAtual == ciclo and not emMorte then G.hud.Visible = false end
+    end)
 end
 
-local loadingSupported = false
-loadSupported = function()
-	if loadingSupported or destroyed then
-		return
-	end
-	loadingSupported = true
+--=============================================================
+-- SEQUÊNCIAS MORTE / RESPAWN
+--=============================================================
+local function sequenciaMorte(character, ciclo)
+    local M = CONFIG.Morte
+    emMorte = true
+    local camera = workspace.CurrentCamera
+    if camera and not fovOriginal then fovOriginal = camera.FieldOfView end
 
-	local empty = emptyLabels[SupportedContainer]
-	clearList(SupportedContainer)
-	empty.Text = "Loading supported games..."
+    audioMorte()
 
-	task.spawn(function()
-		local ok, list = pcall(function()
-			return loadstring(game:HttpGet(supportedUrl))()
-		end)
-		if destroyed then
-			return
-		end
-		if not ok or type(list) ~= "table" then
-			empty.Text = "Couldn't load the supported games list."
-			warn("[Product Faker] supported list failed: " .. tostring(list))
-			loadingSupported = false
-			return
-		end
-
-		clearList(SupportedContainer)
-		empty.Text = "No supported games listed."
-
-		local entries = {}
-		local supportedHere = false
-
-		for i, entry in ipairs(list) do
-			local placeId, name = entry, nil
-			if type(entry) == "table" then
-				placeId, name = entry.PlaceId or entry[1], entry.Name
-			end
-			placeId = tonumber(placeId)
-
-			if placeId then
-				local here = placeId == game.PlaceId
-				supportedHere = supportedHere or here
-
-				local row = makeRow(SupportedContainer, {
-					title = name or "Place " .. placeId,
-					sub = here and "You're in this game  •  loading..." or "Loading players...",
-					icon = ("rbxthumb://type=Asset&id=%d&w=150&h=150"):format(placeId),
-					order = here and -1 or i,
-				}, img.join, function()
-					if here then
-						toast("You're already in this game", col.yellow)
-					else
-						toast("Teleporting...")
-						pcall(TeleportService.Teleport, TeleportService, placeId, LocalPlayer)
-					end
-				end)
-
-				if here then
-					row.Sub.TextColor3 = col.green
-				end
-				table.insert(entries, {row = row, placeId = placeId, here = here, named = name ~= nil})
-			end
-		end
-
-		if supportedHere then
-			toast("This game is supported", col.green)
-		end
-
-		-- resolve place -> universe in parallel
-		local pending = #entries
-		for _, e in ipairs(entries) do
-			task.spawn(function()
-				local okId, id = pcall(getUniverseId, e.placeId)
-				e.universeId = okId and id or nil
-				pending -= 1
-			end)
-		end
-		while pending > 0 and not destroyed do
-			task.wait()
-		end
-		if destroyed then
-			return
-		end
-
-		local ids, seen = {}, {}
-		for _, e in ipairs(entries) do
-			if e.universeId and not seen[e.universeId] then
-				seen[e.universeId] = true
-				table.insert(ids, e.universeId)
-			end
-		end
-
-		local stats = #ids > 0 and getGameStats(ids) or {}
-		if destroyed then
-			return
-		end
-
-		for _, e in ipairs(entries) do
-			local row = e.row
-			if row.Parent then
-				local g = e.universeId and stats[e.universeId]
-				local prefix = e.here and "You're in this game  •  " or ""
-				if g and g.playing then
-					row.Sub.Text = prefix .. commas(g.playing) .. " playing"
-				else
-					row.Sub.Text = prefix .. "Players unavailable"
-				end
-				if not e.named and g and g.name then
-					row.Title.Text = g.name
-				end
-			end
-		end
-
-		loadingSupported = false
-	end)
+    if M.Flash then
+        flashTela(PALETA.Branco, 0.12, 0)
+        task.delay(0.06, function() flashTela(PALETA.Vermelho, 0.45, 0.35) end)
+    end
+    if M.Escurecer then tw(G.escuro, 0.9, { BackgroundTransparency = 0.5 }) end
+    if M.Letterbox then letterbox(true, 0.45) end
+    if M.ColorGrade then gradeMorte() end
+    if M.Bloom then pulso(efl.bloom, "Intensity", 2.4, 0.9) end
+    if M.Blur then pulso(efl.blur, "Size", 22, 1.0) end
+    if M.Vinheta then vinhetaSet(PALETA.Vermelho, 0.3, 0.35) end
+    if M.Aberracao then aberracao(0.6, 12) end
+    if M.Scanlines then G.scan.Visible = true end
+    if M.Shake then camShake(3.0, 0.65, true) end
+    if M.Zoom and camera then camFov(camera.FieldOfView, (fovOriginal or 70) - 12, 2.4) end
+    if M.Glitch then glitchBlocos(0.8, 16) end
+    if M.Voxels > 0 then seguro(voxelDesintegrar, character) end
+    if M.Particulas then
+        local rp = character:FindFirstChild("HumanoidRootPart")
+        if rp then particulas3D(rp, 90, { PALETA.Ciano, PALETA.Magenta, PALETA.Roxo }) end
+    end
+    seguro(iniciarHudMorte, ciclo)
 end
 
-setTab(1, true)
-env.__ProductFaker = UI
-open()
-scanProducts()
-loadSupported()
+local function sequenciaRespawn(character, ciclo)
+    local R = CONFIG.Respawn
+    local rp = character:FindFirstChild("HumanoidRootPart")
+    if not rp then return end
+    local pos = rp.Position
+    local chao = Vector3.new(pos.X, alturaChao(pos, character), pos.Z)
+    local camera = workspace.CurrentCamera
+
+    emMorte = false
+    if hudConn then hudConn:Disconnect(); hudConn = nil end
+    local fov0 = fovOriginal or (camera and camera.FieldOfView) or 70
+
+    audioRespawn()
+
+    if R.GradeDecrypt then
+        G.escuro.BackgroundTransparency = 1
+        gradeDecrypt()
+    else
+        tw(G.escuro, 0.5, { BackgroundTransparency = 1 })
+    end
+    if R.Flash then flashTela(PALETA.Branco, 0.25, 0.05) end
+    letterbox(false, 0.55)
+    vinhetaSet(PALETA.Vermelho, 1, 0.5)
+    if R.ColorGrade then gradeRespawn() else resetGrade(0.5) end
+    if R.Bloom then pulso(efl.bloom, "Intensity", 3, 0.9) end
+    if R.Blur then pulso(efl.blur, "Size", 16, 0.5) end
+    if R.Aberracao then aberracao(0.7, 16, 0.55) end
+    if R.Scanlines then
+        G.scan.Visible = true
+        task.delay(0.6, function() if not emMorte then G.scan.Visible = false end end)
+    else
+        G.scan.Visible = false
+    end
+    if R.Shake then camShake(1.6, 0.45, false) end
+    if camera then
+        if R.PunchFOV then
+            camFov(fov0 + 40, fov0, 0.8, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
+        else
+            camFov(camera.FieldOfView, fov0, 0.4)
+        end
+    end
+    task.delay(1.2, function() if not emMorte then fovOriginal = nil end end)
+
+    if R.EstrelaFlare then estrelaFlare(PALETA.Ciano, 0.9) end
+    for i = 1, R.Ondas do
+        ondaDiamante((i % 2 == 0) and PALETA.Magenta or PALETA.Ciano, 0.7, 0.07 * (i - 1))
+    end
+    if R.Particulas then particulas2D(70, { PALETA.Ciano, PALETA.Magenta, PALETA.Amarelo, PALETA.Branco }) end
+
+    if R.Voxels > 0 then seguro(voxelMaterializar, rp) end
+    if R.Feixe then feixeSatelite(chao) end
+    if R.DiscosChao then
+        discoChao(chao, PALETA.Ciano, 16, 0.8, 0.05)
+        discoChao(chao, PALETA.Magenta, 24, 0.9, 0.17)
+        discoChao(chao, PALETA.Branco, 10, 0.5, 0.30)
+    end
+    if R.Luz then luzFlash(pos, PALETA.Ciano, 0.9) end
+    if R.Highlight then seguro(highlightGlitch, character, 1.0) end
+    if R.PiscarCorpo then seguro(piscarCorpo, character, 0.7) end
+    if R.Particulas then particulas3D(rp, 70, { PALETA.Ciano, PALETA.Magenta, PALETA.Amarelo }) end
+
+    seguro(hudRespawn, ciclo)
+end
+
+--=============================================================
+-- FREEZE
+--=============================================================
+local FREEZE_BIND = "CapriFreezeInput"
+
+local function limparFreeze()
+    for _, c in ipairs(freezeConexoes) do pcall(function() c:Disconnect() end) end
+    freezeConexoes = {}
+    pcall(function() RunService:UnbindFromRenderStep(FREEZE_BIND) end)
+end
+
+local function iniciarFreeze(character, duracao)
+    local F = CONFIG.Freeze
+    if not F.Ativo then return end
+    freezeToken = freezeToken + 1
+    local meu = freezeToken
+    freezeAtivo = true
+    limparFreeze()
+
+    local hum = character:FindFirstChildOfClass("Humanoid")
+    local rp = character:FindFirstChild("HumanoidRootPart")
+    local camera = workspace.CurrentCamera
+    if not (hum and rp and camera) then freezeAtivo = false; return end
+
+    if F.Camera then camCongelar(camera.CFrame) end
+
+    if F.Movimento or F.Pulo then
+        RunService:BindToRenderStep(FREEZE_BIND, 250, function()
+            if freezeAtivo and freezeToken == meu and hum.Parent then
+                if F.Movimento then pcall(function() hum:Move(Vector3.zero, false) end) end
+                if F.Pulo then hum.Jump = false end
+            end
+        end)
+    end
+
+    freezeConexoes[#freezeConexoes + 1] = RunService.Heartbeat:Connect(function()
+        if freezeAtivo and freezeToken == meu and rp.Parent then
+            rp.AssemblyLinearVelocity = Vector3.zero
+            rp.AssemblyAngularVelocity = Vector3.zero
+        end
+    end)
+
+    task.delay(duracao, function()
+        if freezeToken ~= meu then return end
+        freezeAtivo = false
+        limparFreeze()
+        camCongelar(nil)
+    end)
+end
+
+--=============================================================
+-- 🎭 MORPH — KinxCaesar · SÓ R6 (integrado do Char.txt)
+--=============================================================
+local function obterMorphDesc()
+    if morphDescCache then return morphDescCache end
+
+    local entrada = CONFIG.Morph.Username
+    if not entrada or entrada == "" then return nil end
+
+    -- ✅ Aceita username OU ID numérico
+    local id = tonumber(entrada)
+    if not id then
+        local okId, res = pcall(function() return Players:GetUserIdFromNameAsync(entrada) end)
+        if okId and res then id = res end
+    end
+    if not id then return nil end
+
+    local okD, desc = pcall(function() return Players:GetHumanoidDescriptionFromUserId(id) end)
+    if not okD or not desc then return nil end
+
+    morphDescCache = desc
+    return desc
+end
+
+local function aplicarMorph()
+    if not CONFIG.Morph.Ativo then return false end
+
+    local character = player.Character
+    if not character or not character.Parent then return false end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return false end
+
+    -- ⛔ BLOQUEIO R6 (com aviso único)
+    if humanoid.RigType ~= Enum.HumanoidRigType.R6 then
+        if not avisoR15JaMostrado then
+            avisoR15JaMostrado = true
+            if CONFIG.DEBUG then
+                warn("[Capri] 🚫 Morph bloqueado: personagem é R15 (só funciona em R6)")
+            end
+        end
+        return false
+    end
+
+    local desc = obterMorphDesc()
+    if not desc then return false end
+
+    -- Força R6 (garantido pelo bloqueio acima)
+    local okM, gen = pcall(function()
+        return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R6)
+    end)
+    if not okM or not gen then return false end
+
+    for _, item in ipairs(character:GetChildren()) do
+        if item:IsA("Accessory") or item:IsA("Clothing") or item:IsA("ShirtGraphic")
+        or item:IsA("BodyColors") or item:IsA("CharacterMesh") then
+            pcall(function() item:Destroy() end)
+        end
+    end
+
+    for _, item in ipairs(gen:GetChildren()) do
+        local ex = character:FindFirstChild(item.Name)
+        if ex and ex:IsA("BasePart") and ex.Name ~= "HumanoidRootPart" then
+            pcall(function() ex.Color = item.Color end)
+        end
+    end
+
+    local tHead, cHead = gen:FindFirstChild("Head"), character:FindFirstChild("Head")
+    if tHead and cHead then
+        local oldF = cHead:FindFirstChildOfClass("Decal"); if oldF then oldF:Destroy() end
+        local nF = tHead:FindFirstChildOfClass("Decal")
+        if nF then
+            nF:Clone().Parent = cHead
+        else
+            local def = Instance.new("Decal"); def.Name = "face"
+            def.Texture = "rbxasset://textures/face.png"; def.Parent = cHead
+        end
+        local oldM = cHead:FindFirstChildOfClass("SpecialMesh"); if oldM then oldM:Destroy() end
+        local nM = tHead:FindFirstChildOfClass("SpecialMesh"); if nM then nM:Clone().Parent = cHead end
+    end
+
+    for _, item in ipairs(gen:GetChildren()) do
+        if item:IsA("Clothing") or item:IsA("ShirtGraphic") or item:IsA("BodyColors") or item:IsA("CharacterMesh") then
+            pcall(function() item:Clone().Parent = character end)
+        elseif item:IsA("Accessory") then
+            local cl = item:Clone()
+            local h = cl:FindFirstChild("Handle")
+            if h then
+                local att = h:FindFirstChildOfClass("Attachment")
+                if att then
+                    local tAtt = character:FindFirstChild(att.Name, true)
+                    if tAtt then
+                        h.CFrame = tAtt.WorldCFrame
+                        local w = Instance.new("Weld")
+                        w.Name = "AccessoryWeld"
+                        w.Part0, w.Part1 = h, tAtt.Parent
+                        w.C0, w.C1 = att.CFrame, tAtt.CFrame
+                        w.Parent = h
+                    end
+                end
+            end
+            pcall(function() cl.Parent = character end)
+        end
+    end
+    gen:Destroy()
+    return true
+end
+
+--=============================================================
+-- SALVAMENTO DE POSIÇÃO + ROTAÇÃO
+--=============================================================
+local function alturaVoid() return workspace.FallenPartsDestroyHeight + 60 end
+
+local function atualizarMarcador(cf)
+    if not marcador or not marcador.Parent then
+        marcador = Instance.new("Part")
+        marcador.Name = "LocalInvisivel_Respawn"
+        marcador.Size = Vector3.new(1, 1, 1)
+        marcador.Anchored = true
+        marcador.CanCollide, marcador.CanTouch, marcador.CanQuery = false, false, false
+        marcador.Transparency = 1
+        marcador.Massless = true
+        marcador.Parent = workspace
+    end
+    marcador.CFrame = cf
+end
+
+local function endireitar(cf, reserva)
+    local pos = cf.Position
+    local look = cf.LookVector
+    local plano = Vector3.new(look.X, 0, look.Z)
+    if plano.Magnitude < 0.05 and reserva then
+        local l2 = reserva.LookVector
+        plano = Vector3.new(l2.X, 0, l2.Z)
+    end
+    if plano.Magnitude < 0.05 then return CFrame.new(pos) end
+    return CFrame.lookAt(pos, pos + plano.Unit)
+end
+
+rastrear(RunService.Heartbeat:Connect(function()
+    if not salvandoAtivo then return end
+    local c = player.Character; if not c then return end
+    local h = c:FindFirstChildOfClass("Humanoid")
+    local rp = c:FindFirstChild("HumanoidRootPart")
+    if not (h and rp) or h.Health <= 0 then return end
+
+    local cf = rp.CFrame
+    if cf.Position.Y < alturaVoid() then return end
+
+    if h.FloorMaterial ~= Enum.Material.Air then cframeSeguro = cf end
+
+    local t = os.clock()
+    if t - tempoUltimoSalvamento < 1 and ultimoCFrameSalvo
+    and (cf.Position - ultimoCFrameSalvo.Position).Magnitude <= 5 then return end
+
+    cframeSalvo = cf
+    atualizarMarcador(cf)
+    ultimoCFrameSalvo = cf
+    tempoUltimoSalvamento = t
+end))
+
+--=============================================================
+-- CONFIGURAR CHARACTER
+--=============================================================
+local function limparConexoes()
+    for _, c in ipairs(conexoesCharacter) do pcall(function() c:Disconnect() end) end
+    conexoesCharacter = {}
+end
+
+local function configurarCharacter(character)
+    limparConexoes()
+    local h = character:WaitForChild("Humanoid", 10)
+    if not h then return end
+    conexoesCharacter[#conexoesCharacter + 1] = h.Died:Connect(function()
+        local rp = character:FindFirstChild("HumanoidRootPart")
+        if rp and rp.Position.Y > alturaVoid() then
+            cframeSalvo = endireitar(rp.CFrame, ultimoCFrameSalvo)
+            atualizarMarcador(cframeSalvo)
+        elseif cframeSeguro then
+            cframeSalvo = cframeSeguro
+        end
+        salvandoAtivo = false
+        seguro(sequenciaMorte, character, cicloAtual)
+    end)
+end
+
+--=============================================================
+-- RESPAWN
+--=============================================================
+rastrear(player.CharacterAdded:Connect(function(character)
+    if encerrado then return end
+    salvandoAtivo = false
+    cicloAtual = cicloAtual + 1
+    local ciclo = cicloAtual
+
+    tw(G.escuro, 0.08, { BackgroundTransparency = 0.05 })
+
+    seguro(configurarCharacter, character)
+    seguro(iniciarFreeze, character, CONFIG.Freeze.Duracao)
+
+    local h = character:WaitForChild("Humanoid", 10)
+    local rp = character:WaitForChild("HumanoidRootPart", 10)
+    if not (h and rp) then salvandoAtivo = true; return end
+
+    local t0 = os.clock()
+    while h.Health <= 0 and os.clock() - t0 < 3 do task.wait() end
+    task.wait(0.15)
+
+    if cframeSalvo then
+        local alvo = CFrame.new(cframeSalvo.Position + Vector3.new(0, CONFIG.OffsetY, 0))
+                     * (cframeSalvo - cframeSalvo.Position)
+        local ok = pcall(function() character:PivotTo(alvo) end)
+        if not ok then rp.CFrame = alvo end
+        rp.AssemblyLinearVelocity = Vector3.zero
+        rp.AssemblyAngularVelocity = Vector3.zero
+    end
+
+    seguro(sequenciaRespawn, character, ciclo)
+
+    -- 🎭 KinxCaesar: reaplica morph a cada respawn
+    seguro(function() task.wait(0.3); aplicarMorph() end)
+
+    task.wait(0.2)
+    cframeSalvo, ultimoCFrameSalvo = nil, nil
+    tempoUltimoSalvamento = os.clock()
+    if h.Health > 0 then salvandoAtivo = true end
+end))
+
+--=============================================================
+-- LIMPEZA (re-executar substitui)
+--=============================================================
+genv.__CapriProtocol_Cleanup = function()
+    encerrado = true
+    salvandoAtivo = false
+    emMorte = false
+    for _, c in ipairs(conexoes) do pcall(function() c:Disconnect() end) end
+    conexoes = {}
+    limparConexoes()
+    if hudConn then pcall(function() hudConn:Disconnect() end) end
+    freezeAtivo = false
+    freezeToken = freezeToken + 1
+    limparFreeze()
+    CamFX.shakes, CamFX.fov, CamFX.congelar, CamFX.ligado = {}, nil, nil, false
+    pcall(function() RunService:UnbindFromRenderStep(CAM_BIND) end)
+    local camera = workspace.CurrentCamera
+    if camera and fovOriginal then pcall(function() camera.FieldOfView = fovOriginal end) end
+    for s in pairs(audiosAtivos) do pcall(function() s:Destroy() end) end
+    for _, e in pairs(efl) do pcall(function() e:Destroy() end) end
+    pcall(function() if marcador then marcador:Destroy() end end)
+    pcall(function() fxFolder:Destroy() end)
+    pcall(function() gui:Destroy() end)
+end
+
+--=============================================================
+-- INICIALIZAÇÃO
+--=============================================================
+task.spawn(obterMorphDesc)   -- pré-carrega KinxCaesar
+
+local charInicial = player.Character
+if charInicial then
+    seguro(configurarCharacter, charInicial)
+    seguro(function()
+        charInicial:WaitForChild("Humanoid", 10)
+        task.wait(0.5)
+        aplicarMorph()      -- 🎭 aplica KinxCaesar já de cara
+    end)
+    local rp0 = charInicial:FindFirstChild("HumanoidRootPart")
+    if rp0 then cframeSalvo = rp0.CFrame end
+end
+
+print("[Capri Protocol] v8.0 + Char (KinxCaesar R6) carregado")
